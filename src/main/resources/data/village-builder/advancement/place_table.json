@@ -1,0 +1,29 @@
+{
+  "display": {
+    "icon": {
+      "id": "village-builder:builders_table"
+    },
+    "title": {
+      "translate": "advancement.village-builder.place_table.title"
+    },
+    "description": {
+      "translate": "advancement.village-builder.place_table.description"
+    },
+    "show_toast": true,
+    "announce_to_chat": false
+  },
+  "parent": "village-builder:root",
+  "criteria": {
+    "placed_table": {
+      "trigger": "minecraft:placed_block",
+      "conditions": {
+        "location": [
+          {
+            "condition": "minecraft:block_state_property",
+            "block": "village-builder:builders_table"
+          }
+        ]
+      }
+    }
+  }
+}

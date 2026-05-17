@@ -1,0 +1,10 @@
+accessWidener	v2	official
+
+# Access StructureTemplate.palettes for structure analysis
+accessible	field	net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate	palettes	Ljava/util/List;
+accessible	field	net/minecraft/world/level/levelgen/structure/templatesystem/StructureTemplate	entityInfoList	Ljava/util/List;
+
+# Access StructureTemplatePool internals to inject Builder's Workshop into village generation pools
+accessible	field	net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool	templates	Lit/unimi/dsi/fastutil/objects/ObjectArrayList;
+accessible	field	net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool	rawTemplates	Ljava/util/List;
+mutable	field	net/minecraft/world/level/levelgen/structure/pools/StructureTemplatePool	rawTemplates	Ljava/util/List;

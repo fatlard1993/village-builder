@@ -1,0 +1,12 @@
+{
+  "parent": "minecraft:block/cube",
+  "textures": {
+    "particle": "village-builder:block/builders_table_side",
+    "down": "minecraft:block/oak_planks",
+    "up": "village-builder:block/builders_table_top",
+    "north": "village-builder:block/builders_table_side",
+    "south": "village-builder:block/builders_table_side",
+    "east": "village-builder:block/builders_table_side",
+    "west": "village-builder:block/builders_table_side"
+  }
+}

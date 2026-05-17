@@ -1,0 +1,17 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "pattern": [
+    "CS",
+    "TF"
+  ],
+  "key": {
+    "C": "minecraft:crafting_table",
+    "S": "minecraft:smithing_table",
+    "T": "minecraft:stonecutter",
+    "F": "minecraft:furnace"
+  },
+  "result": {
+    "id": "village-builder:builders_table"
+  }
+}

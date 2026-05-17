@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "village-builder",
+  "version": "${version}",
+  "name": "Village Builder",
+  "description": "Villages grow on their own. A Builder villager analyzes what the village needs, gathers materials, and constructs new structures at dawn. Help as a patron — or just watch it happen.",
+  "authors": [
+    "justfatlard"
+  ],
+  "contact": {
+    "sources": "https://github.com/fatlard1993/village-builder"
+  },
+  "license": "MIT",
+  "icon": "assets/village-builder/icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "justfatlard.village_builder.Main"
+    ],
+    "client": [
+      "justfatlard.village_builder.MainClient"
+    ]
+  },
+  "accessWidener": "village-builder.accesswidener",
+  "mixins": [
+    "village-builder.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.18.1",
+    "fabric-api": "*",
+    "minecraft": ">=26.1",
+    "java": ">=25"
+  },
+  "suggests": {
+    "village-mail": "*",
+    "village-quests-justfatlard": "*"
+  }
+}
