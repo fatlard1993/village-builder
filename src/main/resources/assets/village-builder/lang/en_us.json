@@ -18,7 +18,12 @@
   "gui.village-builder.need.utility": "Infrastructure needed",
   "gui.village-builder.need.prosperity": "Village is thriving",
 
-  "item.village-builder.structure_plan": "\u00a76%s Plan",
+  "item.village-builder.builders_table": "Builder's Table",
+  "item.village-builder.builders_flag": "Builder's Flag",
+
+  "message.village-builder.flag.placed": "§aConstruction site marked at %s, %s, %s. The Builder will build there next.",
+  "message.village-builder.flag.no_table": "§cNo Builder's Table found nearby. Stand closer to a village.",
+  "gui.village-builder.materials_more": "...and %s more",
 
   "gui.village-builder.hint.no_builder": "\u00a7cNo Builder villager nearby!",
   "gui.village-builder.hint.ready": "\u00a7aReady! Builds at dawn.",

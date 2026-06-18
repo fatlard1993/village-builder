@@ -1,5 +1,5 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version '1.15.5'
+	id 'net.fabricmc.fabric-loom' version '1.16.2'
 }
 
 version = project.mod_version
@@ -11,6 +11,15 @@ base {
 
 loom {
 	accessWidenerPath = file("src/main/resources/village-builder.accesswidener")
+
+	runs {
+		client {
+			vmArgs "-Xmx3G"
+		}
+		server {
+			vmArgs "-Xmx2G"
+		}
+	}
 }
 
 dependencies {

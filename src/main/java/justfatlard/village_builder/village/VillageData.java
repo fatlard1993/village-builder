@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 public class VillageData {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
-   private static final int CURRENT_NBT_VERSION = 1;
+   private static final int CURRENT_NBT_VERSION = 3; // v3: added preferredBuildSite (optional, null-default on v1–v2 load)
    private BlockPos villageCenter;
    private StructurePlan currentPlan = null;
    private final NonNullList<ItemStack> inventory = NonNullList.withSize(27, ItemStack.EMPTY);
@@ -37,9 +37,9 @@ public class VillageData {
    static final int MAX_BUILT_STRUCTURES = 40;
    private final List<BuiltStructure> builtStructures = new ArrayList<>();
    private transient VillageNeedsAnalyzer cachedAnalyzer;
-   private transient long lastAccessedTick = 0L;
-   private transient UUID planPatronUuid;
-   private transient String planPatronName;
+   private BlockPos preferredBuildSite = null;
+   private UUID planPatronUuid;
+   private String planPatronName;
 
    public VillageData(BlockPos villageCenter) {
       this.villageCenter = villageCenter;
@@ -55,14 +55,6 @@ public class VillageData {
 
    public void clearDirty() {
       this.dirty = false;
-   }
-
-   public void touch(long currentTick) {
-      this.lastAccessedTick = currentTick;
-   }
-
-   public long getLastAccessedTick() {
-      return this.lastAccessedTick;
    }
 
    public void setVillageCenter(BlockPos newCenter) {
@@ -116,7 +108,7 @@ public class VillageData {
       return this.builtStructures;
    }
 
-   public int validateBuiltStructures(ServerLevel world) {
+   public int pruneAbsentFootprints(ServerLevel world) {
       int removed = 0;
       Iterator<BuiltStructure> iter = this.builtStructures.iterator();
       while (iter.hasNext()) {
@@ -174,51 +166,16 @@ public class VillageData {
       this.markDirty();
    }
 
+   // Returns the number of items that did not fit (overflow). addToInventory mutates toAdd in place;
+   // toAdd.getCount() after insertion is what remains unplaced.
    public int tryAddMaterial(Item item, int count) {
-      synchronized (this.inventory) {
-         ItemStack toAdd = new ItemStack(item, count);
-         this.addToInventory(toAdd);
-         this.markDirty();
-         return toAdd.getCount();
-      }
+      ItemStack toAdd = new ItemStack(item, count);
+      this.addToInventory(toAdd);
+      this.markDirty();
+      return toAdd.getCount();
    }
 
    public int getMaterialCount(Item item) {
-      synchronized (this.inventory) {
-         int total = 0;
-         for (ItemStack stack : this.inventory) {
-            if (!stack.isEmpty() && stack.getItem() == item) {
-               total += stack.getCount();
-            }
-         }
-         return total;
-      }
-   }
-
-   public void clearMaterials() {
-      synchronized (this.inventory) {
-         for (int i = 0; i < this.inventory.size(); i++) {
-            this.inventory.set(i, ItemStack.EMPTY);
-         }
-         this.markDirty();
-      }
-   }
-
-   public boolean hasAllMaterials() {
-      if (this.currentPlan == null) {
-         return false;
-      }
-      synchronized (this.inventory) {
-         for (StructureType.MaterialRequirement req : this.currentPlan.getRequirements()) {
-            if (this.getMaterialCountUnsync(req.item()) < req.amount()) {
-               return false;
-            }
-         }
-         return true;
-      }
-   }
-
-   private int getMaterialCountUnsync(Item item) {
       int total = 0;
       for (ItemStack stack : this.inventory) {
          if (!stack.isEmpty() && stack.getItem() == item) {
@@ -228,49 +185,49 @@ public class VillageData {
       return total;
    }
 
+   public void clearMaterials() {
+      for (int i = 0; i < this.inventory.size(); i++) {
+         this.inventory.set(i, ItemStack.EMPTY);
+      }
+      this.markDirty();
+   }
+
+   public boolean hasAllMaterials() {
+      if (this.currentPlan == null) return false;
+      for (StructureType.MaterialRequirement req : this.currentPlan.getRequirements()) {
+         if (this.getMaterialCount(req.item()) < req.amount()) return false;
+      }
+      return true;
+   }
+
    public float getCompletionPercentage() {
-      if (this.currentPlan == null) {
-         return 0.0F;
-      }
+      if (this.currentPlan == null) return 0.0F;
       List<StructureType.MaterialRequirement> reqs = this.currentPlan.getRequirements();
-      if (reqs.isEmpty()) {
-         return 1.0F;
+      if (reqs.isEmpty()) return 1.0F;
+      float sum = 0.0F;
+      for (StructureType.MaterialRequirement req : reqs) {
+         sum += Math.min(1.0F, (float) this.getMaterialCount(req.item()) / req.amount());
       }
-      synchronized (this.inventory) {
-         float sum = 0.0F;
-         for (StructureType.MaterialRequirement req : reqs) {
-            float fraction = Math.min(1.0F, (float) this.getMaterialCountUnsync(req.item()) / req.amount());
-            sum += fraction;
-         }
-         return sum / reqs.size();
-      }
+      return sum / reqs.size();
    }
 
    public boolean tryConsumeMaterials() {
-      synchronized (this.inventory) {
-         if (this.currentPlan == null) {
-            return false;
-         }
-         if (!this.hasAllMaterials()) {
-            return false;
-         }
-         for (StructureType.MaterialRequirement req : this.currentPlan.getRequirements()) {
-            int remaining = req.amount();
-            for (int i = 0; i < this.inventory.size() && remaining > 0; i++) {
-               ItemStack stack = this.inventory.get(i);
-               if (!stack.isEmpty() && stack.getItem() == req.item()) {
-                  int toRemove = Math.min(remaining, stack.getCount());
-                  stack.shrink(toRemove);
-                  if (stack.isEmpty()) {
-                     this.inventory.set(i, ItemStack.EMPTY);
-                  }
-                  remaining -= toRemove;
-               }
+      if (this.currentPlan == null) return false;
+      if (!this.hasAllMaterials()) return false;
+      for (StructureType.MaterialRequirement req : this.currentPlan.getRequirements()) {
+         int remaining = req.amount();
+         for (int i = 0; i < this.inventory.size() && remaining > 0; i++) {
+            ItemStack stack = this.inventory.get(i);
+            if (!stack.isEmpty() && stack.getItem() == req.item()) {
+               int toRemove = Math.min(remaining, stack.getCount());
+               stack.shrink(toRemove);
+               if (stack.isEmpty()) this.inventory.set(i, ItemStack.EMPTY);
+               remaining -= toRemove;
             }
          }
-         this.markDirty();
-         return true;
       }
+      this.markDirty();
+      return true;
    }
 
    private void addToInventory(ItemStack toAdd) {
@@ -295,50 +252,40 @@ public class VillageData {
    }
 
    public List<ItemStack> snapshotInventory() {
-      synchronized (this.inventory) {
-         List<ItemStack> snapshot = new ArrayList<>(this.inventory.size());
-         for (ItemStack stack : this.inventory) {
-            snapshot.add(stack.copy());
-         }
-         return snapshot;
+      List<ItemStack> snapshot = new ArrayList<>(this.inventory.size());
+      for (ItemStack stack : this.inventory) {
+         snapshot.add(stack.copy());
       }
+      return snapshot;
    }
 
    public List<ItemStack> snapshotAndConsumeMaterials() {
-      synchronized (this.inventory) {
-         if (this.currentPlan == null || !this.hasAllMaterials()) {
-            return null;
-         }
-         List<ItemStack> snapshot = new ArrayList<>(this.inventory.size());
-         for (ItemStack stack : this.inventory) {
-            snapshot.add(stack.copy());
-         }
-         for (StructureType.MaterialRequirement req : this.currentPlan.getRequirements()) {
-            int remaining = req.amount();
-            for (int i = 0; i < this.inventory.size() && remaining > 0; i++) {
-               ItemStack stack = this.inventory.get(i);
-               if (!stack.isEmpty() && stack.getItem() == req.item()) {
-                  int toRemove = Math.min(remaining, stack.getCount());
-                  stack.shrink(toRemove);
-                  if (stack.isEmpty()) {
-                     this.inventory.set(i, ItemStack.EMPTY);
-                  }
-                  remaining -= toRemove;
-               }
+      if (this.currentPlan == null || !this.hasAllMaterials()) return null;
+      List<ItemStack> snapshot = new ArrayList<>(this.inventory.size());
+      for (ItemStack stack : this.inventory) {
+         snapshot.add(stack.copy());
+      }
+      for (StructureType.MaterialRequirement req : this.currentPlan.getRequirements()) {
+         int remaining = req.amount();
+         for (int i = 0; i < this.inventory.size() && remaining > 0; i++) {
+            ItemStack stack = this.inventory.get(i);
+            if (!stack.isEmpty() && stack.getItem() == req.item()) {
+               int toRemove = Math.min(remaining, stack.getCount());
+               stack.shrink(toRemove);
+               if (stack.isEmpty()) this.inventory.set(i, ItemStack.EMPTY);
+               remaining -= toRemove;
             }
          }
-         this.markDirty();
-         return snapshot;
       }
+      this.markDirty();
+      return snapshot;
    }
 
    public void restoreInventory(List<ItemStack> snapshot) {
-      synchronized (this.inventory) {
-         for (int i = 0; i < this.inventory.size() && i < snapshot.size(); i++) {
-            this.inventory.set(i, snapshot.get(i));
-         }
-         this.markDirty();
+      for (int i = 0; i < this.inventory.size() && i < snapshot.size(); i++) {
+         this.inventory.set(i, snapshot.get(i));
       }
+      this.markDirty();
    }
 
    public void clearCurrentPlan() {
@@ -346,6 +293,22 @@ public class VillageData {
       this.planPatronUuid = null;
       this.planPatronName = null;
       this.markDirty();
+   }
+
+   public BlockPos getPreferredBuildSite() {
+      return this.preferredBuildSite;
+   }
+
+   public void setPreferredBuildSite(BlockPos pos) {
+      this.preferredBuildSite = pos;
+      this.markDirty();
+   }
+
+   public void clearPreferredBuildSite() {
+      if (this.preferredBuildSite != null) {
+         this.preferredBuildSite = null;
+         this.markDirty();
+      }
    }
 
    public void setPlanPatron(UUID uuid, String name) {
@@ -368,16 +331,18 @@ public class VillageData {
    // --- NBT Serialization ---
 
    public static VillageData fromNbt(CompoundTag nbt) {
+      int cx = nbt.getIntOr("centerX", 0);
+      int cy = nbt.getIntOr("centerY", 64);
+      int cz = nbt.getIntOr("centerZ", 0);
+      int version = nbt.getIntOr("nbtVersion", 0);
       try {
          return fromNbtInternal(nbt);
       } catch (Exception e) {
-         LOGGER.error("Failed to deserialize village data — returning fresh village: {}", e.getMessage());
-         BlockPos center = new BlockPos(
-            nbt.getIntOr("centerX", 0),
-            nbt.getIntOr("centerY", 64),
-            nbt.getIntOr("centerZ", 0)
+         LOGGER.error(
+            "Failed to deserialize village data at ({}, {}, {}) [nbtVersion={}] — inventory, plan, and structure history were lost. This is a bug; please report it.",
+            cx, cy, cz, version, e
          );
-         return new VillageData(center);
+         return new VillageData(new BlockPos(cx, cy, cz));
       }
    }
 
@@ -393,6 +358,23 @@ public class VillageData {
          nbt.getIntOr("centerZ", 0)
       );
       VillageData data = new VillageData(center);
+
+      nbt.getString("planPatronUuid").ifPresent(uuidStr -> {
+         try {
+            data.planPatronUuid = UUID.fromString(uuidStr);
+         } catch (IllegalArgumentException e) {
+            LOGGER.warn("Invalid patron UUID in saved village data at {}: {}", center, uuidStr);
+         }
+      });
+      nbt.getString("planPatronName").ifPresent(name -> data.planPatronName = name);
+
+      if (nbt.contains("flagX")) {
+         data.preferredBuildSite = new BlockPos(
+            nbt.getIntOr("flagX", 0),
+            nbt.getIntOr("flagY", 64),
+            nbt.getIntOr("flagZ", 0)
+         );
+      }
 
       nbt.getString("currentPlan").ifPresent(planId -> {
          Identifier structureId = Identifier.tryParse(planId);
@@ -454,24 +436,34 @@ public class VillageData {
       nbt.putInt("centerZ", this.villageCenter.getZ());
       nbt.putInt("gatheringIndex", this.gatheringIndex);
 
+      if (this.planPatronUuid != null) {
+         nbt.putString("planPatronUuid", this.planPatronUuid.toString());
+      }
+      if (this.planPatronName != null) {
+         nbt.putString("planPatronName", this.planPatronName);
+      }
+      if (this.preferredBuildSite != null) {
+         nbt.putInt("flagX", this.preferredBuildSite.getX());
+         nbt.putInt("flagY", this.preferredBuildSite.getY());
+         nbt.putInt("flagZ", this.preferredBuildSite.getZ());
+      }
+
       if (this.currentPlan != null) {
          nbt.putString("currentPlan", this.currentPlan.getStructureId().toString());
       }
 
       ListTag inventoryList = new ListTag();
-      synchronized (this.inventory) {
-         for (int i = 0; i < this.inventory.size(); i++) {
-            ItemStack stack = this.inventory.get(i);
-            if (!stack.isEmpty()) {
-               int slot = i;
-               ItemStack copy = stack.copy();
-               ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, copy).resultOrPartial(LOGGER::error).ifPresent(stackNbt -> {
-                  if (stackNbt instanceof CompoundTag compound) {
-                     compound.putByte("Slot", (byte) slot);
-                     inventoryList.add(compound);
-                  }
-               });
-            }
+      for (int i = 0; i < this.inventory.size(); i++) {
+         ItemStack stack = this.inventory.get(i);
+         if (!stack.isEmpty()) {
+            int slot = i;
+            ItemStack copy = stack.copy();
+            ItemStack.CODEC.encodeStart(NbtOps.INSTANCE, copy).resultOrPartial(LOGGER::error).ifPresent(stackNbt -> {
+               if (stackNbt instanceof CompoundTag compound) {
+                  compound.putByte("Slot", (byte) slot);
+                  inventoryList.add(compound);
+               }
+            });
          }
       }
 
@@ -508,51 +500,35 @@ public class VillageData {
 
       @Override
       public boolean isEmpty() {
-         synchronized (this.villageData.inventory) {
-            for (ItemStack stack : this.villageData.inventory) {
-               if (!stack.isEmpty()) {
-                  return false;
-               }
-            }
-            return true;
+         for (ItemStack stack : this.villageData.inventory) {
+            if (!stack.isEmpty()) return false;
          }
+         return true;
       }
 
       @Override
       public ItemStack getItem(int slot) {
-         synchronized (this.villageData.inventory) {
-            return this.villageData.inventory.get(slot);
-         }
+         return this.villageData.inventory.get(slot);
       }
 
       @Override
       public ItemStack removeItem(int slot, int amount) {
-         synchronized (this.villageData.inventory) {
-            ItemStack result = ContainerHelper.removeItem(this.villageData.inventory, slot, amount);
-            if (!result.isEmpty()) {
-               this.setChanged();
-            }
-            return result;
-         }
+         ItemStack result = ContainerHelper.removeItem(this.villageData.inventory, slot, amount);
+         if (!result.isEmpty()) this.setChanged();
+         return result;
       }
 
       @Override
       public ItemStack removeItemNoUpdate(int slot) {
-         synchronized (this.villageData.inventory) {
-            ItemStack result = ContainerHelper.takeItem(this.villageData.inventory, slot);
-            if (!result.isEmpty()) {
-               this.setChanged();
-            }
-            return result;
-         }
+         ItemStack result = ContainerHelper.takeItem(this.villageData.inventory, slot);
+         if (!result.isEmpty()) this.setChanged();
+         return result;
       }
 
       @Override
       public void setItem(int slot, ItemStack stack) {
-         synchronized (this.villageData.inventory) {
-            this.villageData.inventory.set(slot, stack);
-            this.setChanged();
-         }
+         this.villageData.inventory.set(slot, stack);
+         this.setChanged();
       }
 
       @Override

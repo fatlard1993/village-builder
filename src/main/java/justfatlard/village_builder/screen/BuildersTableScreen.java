@@ -60,7 +60,7 @@ public class BuildersTableScreen extends AbstractContainerScreen<BuildersTableSc
             if (matYPos + 10 > panelBottom - 24) {
                int remaining = data.materials().size() - materialsRendered;
                if (remaining > 0) {
-                  context.text(this.font, Component.literal("...and " + remaining + " more"), xPos + 5, matYPos, -5592406, true);
+                  context.text(this.font, Component.translatable("gui.village-builder.materials_more", remaining), xPos + 5, matYPos, -5592406, true);
                   matYPos += 10;
                }
                for (int mi = materialsRendered; mi < data.materials().size(); mi++) {

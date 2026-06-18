@@ -45,7 +45,7 @@ public class BuildersTableBlockEntity extends BlockEntity implements ExtendedMen
          return BuildersTableData.EMPTY;
       }
 
-      VillageData villageData = Main.VILLAGE_DATA_MANAGER.getVillageData(serverWorld, this.worldPosition);
+      VillageData villageData = Main.VILLAGE_DATA_MANAGER.getVillageDataForTable(serverWorld, this.worldPosition);
       if (villageData == null || villageData.getCurrentPlan() == null) {
          return BuildersTableData.EMPTY;
       }

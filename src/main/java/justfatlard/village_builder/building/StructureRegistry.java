@@ -22,15 +22,10 @@ public class StructureRegistry {
    public void register(StructureEntry entry) {
       StructureEntry existing = this.entries.get(entry.id());
       if (existing != null) {
-         if (existing.source() == StructureEntry.Source.FALLBACK && entry.source() != StructureEntry.Source.FALLBACK) {
-            this.allEntries.remove(existing);
-         } else {
-            if (entry.source() == StructureEntry.Source.FALLBACK && existing.source() != StructureEntry.Source.FALLBACK) {
-               return;
-            }
-
-            this.allEntries.remove(existing);
+         if (entry.source() == StructureEntry.Source.FALLBACK && existing.source() != StructureEntry.Source.FALLBACK) {
+            return;
          }
+         this.allEntries.remove(existing);
       }
 
       this.entries.put(entry.id(), entry);

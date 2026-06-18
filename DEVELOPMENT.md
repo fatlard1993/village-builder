@@ -60,7 +60,7 @@ village-builder/
 
 Three types represent structure metadata at different levels:
 
-- **`StructureType`** — Enum with a single entry: `BUILDERS_WORKSHOP`. The safety net fallback. Contains blueprint dimensions, material requirements, and display names. Used by `BuildingManager` for hardcoded building placement.
+- **`StructureType`** — Enum with three entries: `BUILDERS_WORKSHOP`, `CHRISTMAS_TREE`, `PUMPKIN_FARM`. The safety net fallback. Contains blueprint dimensions, material requirements, and display names. Used by `BuildingManager` for hardcoded building placement.
 - **`StructureEntry`** — The canonical runtime representation. A record that wraps any structure source (discovered from vanilla NBT, mod-registered via API, or converted from a `StructureType` fallback). Carries: ID, display name, need category, material requirements, biome preferences, clearance size, and source tag.
 - **`StructurePlan`** — What gets assigned to a village. Wraps either a `StructureEntry` or a `StructureType` and provides a unified interface for the village data system. The plan is what appears in the GUI, drives material requirements, and triggers construction.
 
@@ -158,22 +158,31 @@ Paths are only placed on dirt, grass, or coarse dirt — villages on sand, stone
 **Location**: `api/VillageBuilderAPI.java`
 
 Public methods:
-- `processDonatedMaterials(ServerWorld, BlockPos, List<ItemStack>)` — accepts building materials, returns `DonationResult` with accepted/rejected/overflow
+- `processDonatedMaterials(ServerLevel, BlockPos, List<ItemStack>)` — accepts building materials, returns `DonationResult` with accepted/rejected/overflow
 - `isBuildingMaterial(Item)` — check if item is in the material pool
-- `isNeededForConstruction(ServerWorld, BlockPos, Item)` — check if item is needed for current plan
-- `getConstructionStatus(ServerWorld, BlockPos)` — get current construction status text (null if no plan)
+- `isNeededForConstruction(ServerLevel, BlockPos, Item)` — check if item is needed for current plan
+- `getConstructionStatus(ServerLevel, BlockPos)` — get current construction status text (null if no plan)
+- `registerStructure(...)` / `registerStructurePersistent(...)` / `registerTemplatePersistent(...)` — register structures into the build pool; persistent variants survive world reloads via reload callbacks
+- `onConstructionComplete(ConstructionListener)` / `onPlanChanged(PlanChangedListener)` — event hooks
 
 ### 6. Village Data Persistence
 **Location**: `village/VillageDataState.java` + `village/VillageDataManager.java`
 
 - Village data is saved to the world via Minecraft's `PersistentState` system
-- Two maps: a runtime cache (for active villages) and a persistent backing map (survives cache eviction)
+- One canonical map: `BlockPos` (the table position) → `VillageData`. No separate runtime cache. PersistentState serializes this map directly.
 - On world load, orphaned entries (table destroyed while chunk was loaded) are cleaned up
 - On world unload, all state is reset to prevent stale references across sessions
 
-**Fuzzy matching**: If a Builder's Table is broken and replaced within 16 blocks, the closest existing village data migrates to the new position instead of creating a new village. The needs analyzer cache is invalidated on migration.
+**Fuzzy matching**: If a Builder's Table is broken and replaced within 16 blocks (`FUZZY_MATCH_RADIUS`), the existing village data migrates to the new position instead of creating a new village. The needs analyzer cache is invalidated on migration.
 
-**NBT format**: Village data is serialized with `nbtVersion` (int, currently 1), `centerX/Y/Z`, `currentPlan` (structure ID string), `Inventory` (ItemStack list), `gatheringIndex`, and `BuiltStructures`. Version 0 (pre-versioning) data is loaded with defaults. Add migration logic in `VillageData.fromNbt` when incrementing `CURRENT_NBT_VERSION`.
+**NBT format**: Village data is serialized with `nbtVersion` (int, currently 3), `centerX/Y/Z`, `currentPlan` (structure ID string), `Inventory` (ItemStack list), `gatheringIndex`, `BuiltStructures`, and optionally `flagX/Y/Z` (preferred build site). Older versions load with defaults for missing fields. Add migration logic in `VillageData.fromNbtInternal` when incrementing `CURRENT_NBT_VERSION`.
+
+| nbtVersion | Changes |
+|------------|---------|
+| 0 | baseline |
+| 1 | (initial versioning) |
+| 2 | added `planPatronUuid`, `planPatronName` |
+| 3 | added `flagX/Y/Z` (preferred build site) |
 
 **Table destruction**: When the Builder's Table block is broken, village inventory items are dropped as entities. The village data is cleaned up on the next orphan check cycle.
 
@@ -222,6 +231,9 @@ Useful commands for rapid testing in a singleplayer creative world:
 # Give yourself a Builder's Table
 /give @s village-builder:builders_table
 
+# Give yourself a Builder's Flag (stake a preferred build site by right-clicking ground)
+/give @s village-builder:builders_flag
+
 # Summon a max-level Builder villager
 /summon minecraft:villager ~ ~ ~ {VillagerData:{profession:"village-builder:builder",level:5,type:"minecraft:plains"}}
 
@@ -254,11 +266,10 @@ Seasonal structures are gated by system date. To test outside their active month
 
 ## Compatibility
 
-- Minecraft: 1.21.11
-- Fabric Loader: 0.18.1+
-- Fabric API: 0.140.2+1.21.11
-- Java: 21+
-- Yarn mappings: 1.21.11+build.3
+- Minecraft: 26.1.2
+- Fabric Loader: 0.19.2+
+- Fabric API: 0.150.0+26.1.2
+- Java: 25+
 
 ## Builder-Count Gating
 
@@ -287,7 +298,7 @@ All commands require operator (permission level 2 / GAMEMASTERS):
 ## Known Limitations & Open Questions
 
 - **Hardcoded vanilla template paths**: `StructureAnalyzer.getVanillaVillagePools()` lists ~140 template paths manually. If Mojang adds/renames structures, the list goes stale silently. Dynamic pool registry scanning would fix this. If discovery finds zero structures, an ERROR-level log is emitted.
-- **Modded biomes**: Unmapped biomes (e.g., Terralith) fall through to "plains". Cherry and mangrove biomes are mapped; others need explicit handling.
+- **Modded biomes**: Unmapped biomes fall through to "plains". Badlands map to "desert". Bamboo/jungle map to "plains" (not "savanna"). All other unlisted biomes (Terralith, BYG, etc.) default to "plains" — no crash, just no biome-specific structure preference.
 - **Defense structures**: Defense classification (walls, towers) relies on block composition heuristics. Iron bars and cobblestone walls trigger it, but novel defense blocks from mods won't.
 - **Material caching**: Discovered material requirements are recomputed every server start from NBT templates. Caching to disk would speed startup for large modpacks.
 - **Chunk-loading dependency**: Villages only grow when their chunks are loaded. Autonomous gathering and construction require a player nearby. This is inherent to vanilla's chunk system.
@@ -295,5 +306,10 @@ All commands require operator (permission level 2 / GAMEMASTERS):
 
 ## Optional Mod Integration
 
-- **village-quests**: Full integration via `BuilderQuestRegistration` — reputation costs for taking village items, village names in build announcements, and three custom quest types (BuilderFetchQuest, SurveyBuildSiteQuest, RushSuppliesQuest). Loads conditionally when `village-quests-justfatlard` is present.
+- **village-quests**: Full integration via `BuilderQuestRegistration` — three quest types registered under the `"builder"` profession via `QuestRegistry.registerProfessionQuest`:
+  - **BuilderFetchQuest** (FETCH, +12 rep) — builder asks player to gather materials needed for the current construction plan; on completion, items go directly into the village stockpile.
+  - **SurveyBuildSiteQuest** (VILLAGE_DEVELOPMENT, +10 rep) — builder asks player to visit a candidate build location; on completion, player receives a Builder's Flag to stake the site.
+  - **RushSuppliesQuest** (TIME_SENSITIVE, +20 rep) — urgent material delivery when village is ≥60% complete; 5-minute deadline, higher reward. Offered at reputation ≥25 when nearly ready to build.
+  - Quest selection is weighted by material shortage (most-needed item prioritized). Survey quests surface when all materials are gathered (reputation ≥25). Village-quests must be installed for any of this to activate; `village-builder` compileOnly-depends on its JAR (`../village-quests/build/libs/village-quests-1.0.0.jar`).
+  - Village names from village-quests appear in build announcements. Loads conditionally when `village-quests-justfatlard` is present.
 - **village-mail**: Full integration via `VillageMailIntegration` + `BuilderMailRegistration`. Registers post office and public mailbox structures into the building pool. Sends mail notifications to nearby mailbox-owning players when construction completes (first build, then every 3rd), milestone reflections at 5/10/15/20 builds, and personal notes to plan patrons (25% chance). Plan assignments intentionally do NOT trigger mail — the village doesn't chase you down with a shopping list. Uses reflection into `MailApi` — no hard dependency. The donation API (`VillageBuilderAPI.processDonatedMaterials`) remains available for village-mail to route materials into village inventories.

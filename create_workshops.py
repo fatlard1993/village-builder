@@ -65,7 +65,9 @@ def write_structure_nbt(path, palette, blocks, size):
     write_named_tag(f, 9, "blocks")
     write_nbt_byte(f, 10)
     write_nbt_int(f, len(blocks))
-    for x, y, z, state in blocks:
+    for block in blocks:
+        x, y, z, state = block[:4]
+        nbt_data = block[4] if len(block) > 4 else None
         write_named_tag(f, 9, "pos")
         write_nbt_byte(f, 3)
         write_nbt_int(f, 3)
@@ -74,6 +76,12 @@ def write_structure_nbt(path, palette, blocks, size):
         write_nbt_int(f, z)
         write_named_tag(f, 3, "state")
         write_nbt_int(f, state)
+        if nbt_data:
+            write_named_tag(f, 10, "nbt")
+            for k, v in nbt_data.items():
+                write_named_tag(f, 8, k)
+                write_nbt_string(f, v)
+            write_compound_end(f)
         write_compound_end(f)
 
     write_named_tag(f, 9, "entities")
@@ -117,14 +125,16 @@ def build_plains():
         {"Name": "village-builder:builders_table"},                 # 9
         {"Name": "minecraft:barrel", "Properties": {"facing": "up", "open": "false"}},  # 10
         {"Name": "minecraft:wall_torch", "Properties": {"facing": "north"}},  # 11
+        {"Name": "minecraft:jigsaw", "Properties": {"orientation": "down_north"}},  # 12
     ]
     B = []
     a = lambda x,y,z,s: B.append((x,y,z,s))
 
     for x in range(W):
         for z in range(D):
-            # Y0: cobblestone foundation
-            a(x, 0, z, 0)
+            # Y0: cobblestone foundation (jigsaw entrance at 2,0,0 — added below)
+            if not (x == 2 and z == 0):
+                a(x, 0, z, 0)
             # Y1: cobblestone walls, log corners, door
             if is_corner(x, z):       a(x, 1, z, 2)
             elif x == 2 and z == 0:   a(x, 1, z, 6)  # door lower
@@ -147,6 +157,9 @@ def build_plains():
     a(2, 2, 4, 9)   # builder's table center-back
     a(1, 2, 4, 10)  # barrel
     a(2, 3, 3, 11)  # wall torch
+    B.append((2, 0, 0, 12, {"id": "minecraft:jigsaw", "name": "minecraft:building_entrance",
+        "target": "minecraft:building_entrance", "pool": "minecraft:empty",
+        "joint": "rollable", "final_state": "minecraft:cobblestone"}))
 
     return P, B, (W, 5, D)
 
@@ -167,13 +180,15 @@ def build_taiga():
         {"Name": "village-builder:builders_table"},                   # 10
         {"Name": "minecraft:barrel", "Properties": {"facing": "up", "open": "false"}},  # 11
         {"Name": "minecraft:wall_torch", "Properties": {"facing": "north"}},  # 12
+        {"Name": "minecraft:jigsaw", "Properties": {"orientation": "down_north"}},  # 13
     ]
     B = []
     a = lambda x,y,z,s: B.append((x,y,z,s))
 
     for x in range(W):
         for z in range(D):
-            a(x, 0, z, 0)  # cobblestone foundation
+            if not (x == 2 and z == 0):
+                a(x, 0, z, 0)  # cobblestone foundation
             # Y1: log corners, cobblestone walls
             if is_corner(x, z):       a(x, 1, z, 2)
             elif x == 2 and z == 0:   a(x, 1, z, 7)  # door
@@ -196,6 +211,9 @@ def build_taiga():
     a(2, 2, 4, 10)  # builder's table
     a(1, 2, 4, 11)  # barrel
     a(2, 3, 3, 12)  # wall torch
+    B.append((2, 0, 0, 13, {"id": "minecraft:jigsaw", "name": "minecraft:building_entrance",
+        "target": "minecraft:building_entrance", "pool": "minecraft:empty",
+        "joint": "rollable", "final_state": "minecraft:cobblestone"}))
 
     return P, B, (W, 5, D)
 
@@ -214,13 +232,15 @@ def build_desert():
         {"Name": "minecraft:barrel", "Properties": {"facing": "up", "open": "false"}},  # 8
         {"Name": "minecraft:wall_torch", "Properties": {"facing": "north"}},  # 9
         {"Name": "minecraft:smooth_sandstone_slab", "Properties": {"type": "top"}},  # 10 (floor)
+        {"Name": "minecraft:jigsaw", "Properties": {"orientation": "down_north"}},  # 11
     ]
     B = []
     a = lambda x,y,z,s: B.append((x,y,z,s))
 
     for x in range(W):
         for z in range(D):
-            a(x, 0, z, 0)  # sandstone foundation
+            if not (x == 2 and z == 0):
+                a(x, 0, z, 0)  # sandstone foundation
             # Y1: smooth sandstone walls, cut sandstone detail at corners
             if is_corner(x, z):       a(x, 1, z, 1)  # cut sandstone corners
             elif x == 2 and z == 0:   a(x, 1, z, 4)  # door
@@ -239,6 +259,9 @@ def build_desert():
     a(2, 2, 4, 7)   # builder's table
     a(1, 2, 4, 8)   # barrel
     a(2, 3, 3, 9)   # wall torch
+    B.append((2, 0, 0, 11, {"id": "minecraft:jigsaw", "name": "minecraft:building_entrance",
+        "target": "minecraft:building_entrance", "pool": "minecraft:empty",
+        "joint": "rollable", "final_state": "minecraft:smooth_sandstone"}))
 
     return P, B, (W, 5, D)
 
@@ -258,14 +281,16 @@ def build_savanna():
         {"Name": "village-builder:builders_table"},                   # 9
         {"Name": "minecraft:barrel", "Properties": {"facing": "up", "open": "false"}},  # 10
         {"Name": "minecraft:torch", "Properties": {"lit": "true"}},   # 11  (freestanding, savanna is more open)
+        {"Name": "minecraft:jigsaw", "Properties": {"orientation": "down_north"}},  # 12
     ]
     B = []
     a = lambda x,y,z,s: B.append((x,y,z,s))
 
     for x in range(W):
         for z in range(D):
-            # Y0: acacia plank foundation (savanna uses wood not stone)
-            a(x, 0, z, 0)
+            # Y0: acacia plank foundation (savanna uses wood not stone; jigsaw entrance at 2,0,0)
+            if not (x == 2 and z == 0):
+                a(x, 0, z, 0)
             # Y1: log frame corners, plank walls
             if is_corner(x, z):       a(x, 1, z, 1)
             elif x == 2 and z == 0:   a(x, 1, z, 5)  # door
@@ -288,6 +313,9 @@ def build_savanna():
     a(2, 2, 4, 9)   # builder's table
     a(1, 2, 4, 10)  # barrel
     a(3, 2, 1, 11)  # torch on floor (open feel)
+    B.append((2, 0, 0, 12, {"id": "minecraft:jigsaw", "name": "minecraft:building_entrance",
+        "target": "minecraft:building_entrance", "pool": "minecraft:empty",
+        "joint": "rollable", "final_state": "minecraft:acacia_planks"}))
 
     return P, B, (W, 5, D)
 
@@ -308,14 +336,16 @@ def build_snowy():
         {"Name": "village-builder:builders_table"},                         # 10
         {"Name": "minecraft:barrel", "Properties": {"facing": "up", "open": "false"}},  # 11
         {"Name": "minecraft:wall_torch", "Properties": {"facing": "north"}},  # 12
+        {"Name": "minecraft:jigsaw", "Properties": {"orientation": "down_north"}},  # 13
     ]
     B = []
     a = lambda x,y,z,s: B.append((x,y,z,s))
 
     for x in range(W):
         for z in range(D):
-            # Y0: spruce plank foundation
-            a(x, 0, z, 0)
+            # Y0: spruce plank foundation (jigsaw entrance at 2,0,0)
+            if not (x == 2 and z == 0):
+                a(x, 0, z, 0)
             # Y1: stripped spruce frame, plank walls, diorite base
             if is_corner(x, z):       a(x, 1, z, 1)  # stripped spruce frame
             elif x == 2 and z == 0:   a(x, 1, z, 5)  # door
@@ -343,6 +373,9 @@ def build_snowy():
     a(2, 2, 4, 10)  # builder's table
     a(1, 2, 4, 11)  # barrel
     a(2, 3, 3, 12)  # wall torch
+    B.append((2, 0, 0, 13, {"id": "minecraft:jigsaw", "name": "minecraft:building_entrance",
+        "target": "minecraft:building_entrance", "pool": "minecraft:empty",
+        "joint": "rollable", "final_state": "minecraft:spruce_planks"}))
 
     return P, B, (W, 6, D)  # height 6 because of snow layer
 

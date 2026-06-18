@@ -6,8 +6,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
-import justfatlard.village_builder.Main;
-import justfatlard.village_builder.building.StructureType;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
@@ -20,30 +18,27 @@ public class BuilderMailRegistration {
    private static final String OVERWORLD_DIMENSION = "minecraft:overworld";
    private static final Map<BlockPos, Long> lastMailSent = new HashMap<>();
    private static final long MAIL_COOLDOWN_TICKS = 24000L;
-   private static final Map<BlockPos, Integer> buildCounts = new HashMap<>();
 
    public static void register() {
       LOGGER.info("Village-mail integration active (construction notifications)");
    }
 
    public static void notifyConstructionComplete(
-      MinecraftServer server, BlockPos villageCenter, String structureName, String villageName, UUID patronUuid, String patronName, boolean offTheme
+      MinecraftServer server, BlockPos villageCenter, String structureName, String villageName, UUID patronUuid, String patronName, boolean offTheme, int totalBuilt
    ) {
       if (VillageMailIntegration.AVAILABLE) {
-         buildCounts.putIfAbsent(villageCenter, Main.VILLAGE_DATA_MANAGER.getBuiltStructureCount(villageCenter));
-         int count = buildCounts.merge(villageCenter, 1, Integer::sum);
          if (patronUuid != null && patronName != null && ThreadLocalRandom.current().nextDouble() < 0.25) {
             String patronBody = pickPatronLetter(structureName, patronName, offTheme);
             String builderName = getBuilderName(villageCenter);
             VillageMailIntegration.sendMessage(server, patronUuid, builderName, patronBody);
          }
 
-         if (count <= 1 || count % 3 == 0) {
+         if (totalBuilt <= 1 || totalBuilt % 3 == 0) {
             long currentTick = server.getTickCount();
             Long lastSent = lastMailSent.get(villageCenter);
             if (lastSent == null || currentTick - lastSent >= 24000L) {
                String builderName = getBuilderName(villageCenter);
-               String body = pickConstructionLetter(structureName, count, villageName);
+               String body = pickConstructionLetter(structureName, totalBuilt, villageName);
                List<UUID> residents = findTrustedResidents(server, villageCenter);
 
                for (UUID resident : residents) {
@@ -54,15 +49,11 @@ public class BuilderMailRegistration {
 
                if (!residents.isEmpty()) {
                   lastMailSent.put(villageCenter, currentTick);
-                  LOGGER.debug("Sent construction mail to {} residents (build #{})", residents.size(), count);
+                  LOGGER.debug("Sent construction mail to {} residents (build #{})", residents.size(), totalBuilt);
                }
             }
          }
       }
-   }
-
-   public static void notifyConstructionComplete(MinecraftServer server, BlockPos villageCenter, String structureName, String villageName) {
-      notifyConstructionComplete(server, villageCenter, structureName, villageName, null, null, false);
    }
 
    private static String pickPatronLetter(String structureName, String patronName, boolean offTheme) {
@@ -85,11 +76,6 @@ public class BuilderMailRegistration {
          };
          return letters[rng.nextInt(letters.length)];
       }
-   }
-
-   public static void notifyNewPlan(
-      MinecraftServer server, BlockPos villageCenter, String planName, String villageName, List<StructureType.MaterialRequirement> requirements
-   ) {
    }
 
    public static void checkMilestoneMail(MinecraftServer server, BlockPos villageCenter, int totalBuilds) {
@@ -199,6 +185,5 @@ public class BuilderMailRegistration {
 
    public static void reset() {
       lastMailSent.clear();
-      buildCounts.clear();
    }
 }

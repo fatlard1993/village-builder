@@ -1,0 +1,6 @@
+{
+  "model": {
+    "type": "minecraft:model",
+    "model": "village-builder:item/builders_flag"
+  }
+}

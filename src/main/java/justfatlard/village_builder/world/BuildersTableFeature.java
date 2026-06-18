@@ -17,7 +17,6 @@ import net.minecraft.world.entity.ai.village.poi.PoiTypes;
 import net.minecraft.world.entity.ai.village.poi.PoiManager.Occupancy;
 import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.levelgen.Heightmap.Types;
 import net.minecraft.world.phys.AABB;
@@ -34,39 +33,75 @@ public class BuildersTableFeature {
    }
 
    public static void trySpawnInVillage(ServerLevel world, BlockPos chunkPos) {
-      PoiManager poiStorage = world.getPoiManager();
-      Optional<BlockPos> bellPos = poiStorage.findClosest(poi -> poi.is(PoiTypes.MEETING), chunkPos, 48, Occupancy.ANY);
-      if (!bellPos.isEmpty()) {
-         Set<BlockPos> worldBells = evaluatedBells.computeIfAbsent(world.dimension(), k -> new LinkedHashSet<>());
-         if (!worldBells.contains(bellPos.get())) {
-            while (worldBells.size() >= 10000) {
-               Iterator<BlockPos> iter = worldBells.iterator();
-               iter.next();
-               iter.remove();
-            }
+      int cx = chunkPos.getX() + 8;
+      int cz = chunkPos.getZ() + 8;
 
-            worldBells.add(bellPos.get());
-            RandomSource random = world.getRandom();
-            if (random.nextInt(10) <= 8) {
-               Optional<BlockPos> existingTable = poiStorage.findClosest(
-                  poi -> poi.is(Main.BUILDERS_TABLE_POI_KEY), bellPos.get(), 64, Occupancy.ANY
-               );
-               if (!existingTable.isPresent()) {
-                  BlockPos tablePos = findSuitableLocation(world, bellPos.get(), random);
-                  if (tablePos != null) {
-                     world.setBlockAndUpdate(tablePos, Main.BUILDERS_TABLE_BLOCK.defaultBlockState());
-                     LOGGER.info("Spawned Builder's Table at {} in village", tablePos);
-                  }
-               }
-            }
+      // Cheap pre-check against known bells — avoids POI queries for every chunk in a village area.
+      Set<BlockPos> worldBells = evaluatedBells.computeIfAbsent(world.dimension(), k -> new LinkedHashSet<>());
+      for (BlockPos knownBell : worldBells) {
+         int dx = knownBell.getX() - cx;
+         int dz = knownBell.getZ() - cz;
+         if (dx * dx + dz * dz < 128 * 128) {
+            return;
          }
       }
+
+      // Defer all heavy work (POI search, getHeight, block placement) to next server tick.
+      // Running it inline blocks the chunk-loading pipeline and causes a server freeze when
+      // many chunks load at once (e.g. on teleport).
+      BlockPos searchCenter = new BlockPos(cx, world.getSeaLevel() + 40, cz);
+      world.getServer().execute(() -> spawnNearBell(world, searchCenter));
+   }
+
+   private static void spawnNearBell(ServerLevel world, BlockPos searchCenter) {
+      PoiManager poiStorage = world.getPoiManager();
+      Optional<BlockPos> bellPos = poiStorage.findClosest(poi -> poi.is(PoiTypes.MEETING), searchCenter, 48, Occupancy.ANY);
+      if (bellPos.isEmpty()) {
+         return;
+      }
+
+      Set<BlockPos> worldBells = evaluatedBells.computeIfAbsent(world.dimension(), k -> new LinkedHashSet<>());
+      if (worldBells.contains(bellPos.get())) {
+         return;
+      }
+
+      while (worldBells.size() >= MAX_EVALUATED_BELLS) {
+         Iterator<BlockPos> iter = worldBells.iterator();
+         iter.next();
+         iter.remove();
+      }
+      worldBells.add(bellPos.get());
+
+      LOGGER.info("Found bell at {}, checking for table", bellPos.get());
+
+      RandomSource random = world.getRandom();
+      if (random.nextInt(10) > 8) {
+         LOGGER.info("Bell at {} — skipped by chance roll (10%% miss)", bellPos.get());
+         return;
+      }
+
+      Optional<BlockPos> existingTable = poiStorage.findClosest(
+         poi -> poi.is(Main.BUILDERS_TABLE_POI_KEY), bellPos.get(), 64, Occupancy.ANY
+      );
+      if (existingTable.isPresent()) {
+         LOGGER.info("Bell at {} already has a Builder's Table at {}", bellPos.get(), existingTable.get());
+         return;
+      }
+
+      BlockPos tablePos = findSuitableLocation(world, bellPos.get(), random);
+      if (tablePos == null) {
+         LOGGER.warn("Bell at {} — no suitable location found in 40 attempts", bellPos.get());
+         return;
+      }
+
+      world.setBlockAndUpdate(tablePos, Main.BUILDERS_TABLE_BLOCK.defaultBlockState());
+      LOGGER.info("Spawned Builder's Table at {} near bell {}", tablePos, bellPos.get());
    }
 
    private static BlockPos findSuitableLocation(ServerLevel world, BlockPos center, RandomSource random) {
-      for (int attempt = 0; attempt < 20; attempt++) {
-         int x = center.getX() + random.nextIntBetweenInclusive(-15, 15);
-         int z = center.getZ() + random.nextIntBetweenInclusive(-15, 15);
+      for (int attempt = 0; attempt < 40; attempt++) {
+         int x = center.getX() + random.nextIntBetweenInclusive(-20, 20);
+         int z = center.getZ() + random.nextIntBetweenInclusive(-20, 20);
          int y = world.getHeight(Types.MOTION_BLOCKING_NO_LEAVES, x, z);
          BlockPos groundPos = new BlockPos(x, y, z);
          if (isLocationSuitable(world, groundPos)) {
@@ -77,33 +112,17 @@ public class BuildersTableFeature {
             }
          }
       }
-
       return null;
    }
 
    private static boolean isLocationSuitable(ServerLevel world, BlockPos pos) {
       if (!world.getBlockState(pos).isAir()) {
          return false;
-      } else {
-         BlockState groundState = world.getBlockState(pos.below());
-         if (!groundState.isSolid()) {
-            return false;
-         } else if (groundState.getBlock() != Blocks.FARMLAND && groundState.getBlock() != Blocks.DIRT_PATH) {
-            for (int dx = -1; dx <= 1; dx++) {
-               for (int dz = -1; dz <= 1; dz++) {
-                  if (dx != 0 || dz != 0) {
-                     BlockPos checkPos = pos.offset(dx, 0, dz);
-                     if (!world.getBlockState(checkPos).isAir()) {
-                        return false;
-                     }
-                  }
-               }
-            }
-
-            return true;
-         } else {
-            return false;
-         }
       }
+      if (!world.getBlockState(pos.above()).isAir()) {
+         return false;
+      }
+      BlockState groundState = world.getBlockState(pos.below());
+      return groundState.isSolid();
    }
 }

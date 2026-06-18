@@ -1,6 +1,8 @@
 package justfatlard.village_builder.mixin;
 
+import java.util.List;
 import java.util.UUID;
+import justfatlard.village_builder.BuilderTrades;
 import justfatlard.village_builder.Main;
 import justfatlard.village_builder.building.StructureEntry;
 import justfatlard.village_builder.building.StructurePlan;
@@ -19,6 +21,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.item.trading.MerchantOffer;
+import net.minecraft.world.item.trading.MerchantOffers;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.spongepowered.asm.mixin.Mixin;
@@ -29,6 +32,31 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Villager.class)
 public class VillagerEntityMixin {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
+
+   /**
+    * After the data-driven trade set has been loaded into this villager's offers,
+    * replace all offers with our dynamically priced ones for Builder villagers.
+    *
+    * updateTrades is called whenever the villager gains a level or is freshly
+    * spawned. We inject at TAIL so the data-driven offers are already populated,
+    * then we clear and replace with our runtime-generated set.
+    */
+   @Inject(method = "updateTrades", at = @At("TAIL"))
+   private void onUpdateTrades(ServerLevel world, CallbackInfo ci) {
+      Villager villager = (Villager)(Object)this;
+      if (!villager.getVillagerData().profession().is(Main.BUILDER_KEY)) {
+         return;
+      }
+      int villagerLevel = villager.getVillagerData().level();
+      List<MerchantOffer> dynamic = BuilderTrades.buildDynamicOffers(
+         world, villager.blockPosition(), villagerLevel);
+      if (dynamic.isEmpty()) {
+         return;
+      }
+      MerchantOffers offers = villager.getOffers();
+      offers.clear();
+      offers.addAll(dynamic);
+   }
 
    @Inject(method = "rewardTradeXp", at = @At("TAIL"))
    private void onTradeComplete(MerchantOffer offer, CallbackInfo ci) {

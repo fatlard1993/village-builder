@@ -67,12 +67,16 @@ public class VillageBuilderAPI {
       List<ItemStack> accepted = new ArrayList<>();
       List<ItemStack> rejected = new ArrayList<>();
       int overflowLost = 0;
+      if (donatedItems == null || donatedItems.isEmpty()) {
+         return new VillageBuilderAPI.DonationResult(accepted, rejected, 0);
+      }
       VillageData villageData = Main.VILLAGE_DATA_MANAGER.getVillageData(world, donationPos);
       if (villageData == null) {
          rejected.addAll(donatedItems);
          return new VillageBuilderAPI.DonationResult(accepted, rejected, 0);
       } else {
          for (ItemStack donated : donatedItems) {
+            if (donated == null || donated.isEmpty()) continue;
             Item donatedItem = donated.getItem();
             int donatedCount = donated.getCount();
             if (isBuildingMaterial(donatedItem)) {

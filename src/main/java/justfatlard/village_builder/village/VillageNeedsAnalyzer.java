@@ -22,6 +22,7 @@ import net.minecraft.world.entity.npc.villager.Villager;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.BedBlock;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.BeetrootBlock;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.CropBlock;
@@ -232,6 +233,7 @@ public class VillageNeedsAnalyzer {
          int sampledFarmlandCount = 0;
          int sampledFoodSupply = 0;
 
+         int sampledBedCount = 0;
          for (int x = -32; x <= 32; x++) {
             for (int z = -32; z <= 32; z++) {
                if (x * x + z * z <= 1024) {
@@ -243,13 +245,14 @@ public class VillageNeedsAnalyzer {
                         );
                         BlockState state = this.world.getBlockState(mutablePos);
                         if (state.getBlock() instanceof BedBlock && state.getValue(BedBlock.PART) == BedPart.HEAD) {
-                           this.bedCount++;
+                           sampledBedCount++;
                         }
                      }
                   }
                }
             }
          }
+         this.bedCount = sampledBedCount;
 
          for (int x = -32; x <= 32; x += sampleStep) {
             for (int zx = -32; zx <= 32; zx += sampleStep) {
@@ -265,15 +268,18 @@ public class VillageNeedsAnalyzer {
                            if (state.getBlock() == Blocks.FARMLAND) {
                               sampledFarmlandCount++;
                            } else if (state.getBlock() == Blocks.WATER && !this.hasWell) {
-                              for (int dx = -1; dx <= 1; dx++) {
-                                 for (int dz = -1; dz <= 1; dz++) {
-                                    wellCheckPos.set(mutablePos.getX() + dx, mutablePos.getY(), mutablePos.getZ() + dz);
-                                    BlockState nearby = this.world.getBlockState(wellCheckPos);
-                                    if (nearby.getBlock() == Blocks.COBBLESTONE || nearby.getBlock() == Blocks.STONE_BRICKS) {
-                                       this.hasWell = true;
-                                       break;
-                                    }
+                              int stoneNeighbors = 0;
+                              for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+                                 wellCheckPos.set(mutablePos.getX() + d[0], mutablePos.getY(), mutablePos.getZ() + d[1]);
+                                 Block nb = this.world.getBlockState(wellCheckPos).getBlock();
+                                 if (nb == Blocks.COBBLESTONE || nb == Blocks.STONE_BRICKS
+                                       || nb == Blocks.MOSSY_COBBLESTONE || nb == Blocks.COBBLESTONE_WALL
+                                       || nb == Blocks.STONE_BRICK_WALL) {
+                                    stoneNeighbors++;
                                  }
+                              }
+                              if (stoneNeighbors >= 3) {
+                                 this.hasWell = true;
                               }
                            } else if (state.getBlock() == Blocks.BARREL) {
                               if (this.world.getBlockEntity(mutablePos) instanceof BarrelBlockEntity barrel) {

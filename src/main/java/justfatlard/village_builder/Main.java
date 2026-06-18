@@ -2,28 +2,28 @@ package justfatlard.village_builder;
 
 import com.google.common.collect.ImmutableSet;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import justfatlard.village_builder.block.BuildersTableBlock;
 import justfatlard.village_builder.block.BuildersTableBlockEntity;
 import justfatlard.village_builder.building.BuildingManager;
+import justfatlard.village_builder.item.BuildersFlagItem;
 import justfatlard.village_builder.building.StructureAnalyzer;
 import justfatlard.village_builder.building.StructurePlan;
 import justfatlard.village_builder.building.StructureRegistry;
 import justfatlard.village_builder.building.StructureType;
 import justfatlard.village_builder.integration.BuilderMailRegistration;
+import justfatlard.village_builder.integration.BuilderQuestRegistration;
 import justfatlard.village_builder.screen.BuildersTableData;
 import justfatlard.village_builder.screen.BuildersTableScreenHandler;
 import justfatlard.village_builder.village.VillageData;
 import justfatlard.village_builder.village.VillageDataManager;
 import justfatlard.village_builder.world.BuildersTableFeature;
-import justfatlard.village_builder.world.VillagePoolInjector;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
-import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
 import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
 import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
+import net.fabricmc.fabric.api.object.builder.v1.world.poi.PoiHelper;
 import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
@@ -54,9 +54,11 @@ public class Main implements ModInitializer {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
    public static final String MOD_ID = "village-builder";
    public static final Identifier BUILDERS_TABLE_ID = Identifier.fromNamespaceAndPath("village-builder", "builders_table");
+   public static final Identifier BUILDERS_FLAG_ID = Identifier.fromNamespaceAndPath("village-builder", "builders_flag");
    public static final Identifier BUILDER_ID = Identifier.fromNamespaceAndPath("village-builder", "builder");
    public static final ResourceKey<Block> BUILDERS_TABLE_BLOCK_KEY = ResourceKey.create(Registries.BLOCK, BUILDERS_TABLE_ID);
    public static final ResourceKey<Item> BUILDERS_TABLE_ITEM_KEY = ResourceKey.create(Registries.ITEM, BUILDERS_TABLE_ID);
+   public static final ResourceKey<Item> BUILDERS_FLAG_ITEM_KEY = ResourceKey.create(Registries.ITEM, BUILDERS_FLAG_ID);
    public static final ResourceKey<PoiType> BUILDERS_TABLE_POI_KEY = ResourceKey.create(Registries.POINT_OF_INTEREST_TYPE, BUILDERS_TABLE_ID);
    public static final ResourceKey<VillagerProfession> BUILDER_KEY = ResourceKey.create(Registries.VILLAGER_PROFESSION, BUILDER_ID);
    public static final ResourceKey<CreativeModeTab> ITEM_GROUP_KEY = ResourceKey.create(
@@ -66,6 +68,9 @@ public class Main implements ModInitializer {
    public static BlockEntityType<BuildersTableBlockEntity> BUILDERS_TABLE_BLOCK_ENTITY;
    public static final BlockItem BUILDERS_TABLE_ITEM = new BlockItem(
       BUILDERS_TABLE_BLOCK, new Item.Properties().setId(BUILDERS_TABLE_ITEM_KEY).useItemDescriptionPrefix()
+   );
+   public static final BuildersFlagItem BUILDERS_FLAG_ITEM = new BuildersFlagItem(
+      new Item.Properties().setId(BUILDERS_FLAG_ITEM_KEY).stacksTo(1)
    );
    public static PoiType BUILDERS_TABLE_POI;
    public static VillagerProfession BUILDER;
@@ -82,14 +87,11 @@ public class Main implements ModInitializer {
          FabricBlockEntityTypeBuilder.create(BuildersTableBlockEntity::new, BUILDERS_TABLE_BLOCK).build()
       );
       Registry.register(BuiltInRegistries.ITEM, BUILDERS_TABLE_ID, BUILDERS_TABLE_ITEM);
+      Registry.register(BuiltInRegistries.ITEM, BUILDERS_FLAG_ID, BUILDERS_FLAG_ITEM);
       BUILDERS_TABLE_SCREEN_HANDLER = Registry.register(
          BuiltInRegistries.MENU, BUILDERS_TABLE_ID, new ExtendedMenuType<>(BuildersTableScreenHandler::new, BuildersTableData.CODEC)
       );
-      BUILDERS_TABLE_POI = Registry.register(
-         BuiltInRegistries.POINT_OF_INTEREST_TYPE,
-         BUILDERS_TABLE_ID,
-         new PoiType(ImmutableSet.copyOf(BUILDERS_TABLE_BLOCK.getStateDefinition().getPossibleStates()), 1, 48)
-      );
+      BUILDERS_TABLE_POI = PoiHelper.register(BUILDERS_TABLE_ID, 1, 48, BUILDERS_TABLE_BLOCK);
       BUILDER = Registry.register(
          BuiltInRegistries.VILLAGER_PROFESSION,
          BUILDER_ID,
@@ -100,7 +102,7 @@ public class Main implements ModInitializer {
             ImmutableSet.of(),
             ImmutableSet.of(),
             SoundEvents.VILLAGER_WORK_MASON,
-            Int2ObjectMaps.emptyMap()
+            BuilderTrades.buildTradeTable()
          )
       );
       BuilderTrades.register();
@@ -113,7 +115,6 @@ public class Main implements ModInitializer {
             STRUCTURE_REGISTRY.runReloadCallbacks();
             STRUCTURE_REGISTRY.markInitialized();
             VILLAGE_DATA_MANAGER.initialize(world);
-            VillagePoolInjector.inject(server);
          }
       });
       ServerLevelEvents.UNLOAD.register((server, world) -> {
@@ -128,24 +129,18 @@ public class Main implements ModInitializer {
             VILLAGE_DATA_MANAGER.tick(world);
          }
       });
-      ServerChunkEvents.CHUNK_LOAD.register((world, chunk, newlyGenerated) -> {
-         if (world.dimension() == Level.OVERWORLD) {
-            BuildersTableFeature.trySpawnInVillage(world, chunk.getPos().getWorldPosition());
-         }
-      });
       CreativeModeTab builderGroup = FabricCreativeModeTab.builder()
          .icon(() -> new ItemStack(BUILDERS_TABLE_ITEM))
          .title(Component.translatable("itemGroup.village-builder.village_builder"))
-         .displayItems((context, entries) -> entries.accept(new ItemStack(BUILDERS_TABLE_ITEM)))
+         .displayItems((context, entries) -> {
+            entries.accept(new ItemStack(BUILDERS_TABLE_ITEM));
+            entries.accept(new ItemStack(BUILDERS_FLAG_ITEM));
+         })
          .build();
       Registry.register(BuiltInRegistries.CREATIVE_MODE_TAB, ITEM_GROUP_KEY, builderGroup);
       if (FabricLoader.getInstance().isModLoaded("village-quests-justfatlard")) {
-         try {
-            Class.forName("justfatlard.village_builder.integration.BuilderQuestRegistration").getMethod("register").invoke(null);
-            LOGGER.info("Registered builder quests with village-quests");
-         } catch (Exception var3) {
-            LOGGER.warn("Failed to register builder quests: {}", var3.getMessage());
-         }
+         BuilderQuestRegistration.register();
+         LOGGER.info("Registered builder quests with village-quests");
       }
 
       if (FabricLoader.getInstance().isModLoaded("village-mail")) {
