@@ -1,5 +1,5 @@
 plugins {
-	id 'net.fabricmc.fabric-loom' version '1.16.2'
+	id 'net.fabricmc.fabric-loom' version '1.17.12'
 }
 
 version = project.mod_version
@@ -26,6 +26,9 @@ dependencies {
 	minecraft "com.mojang:minecraft:${project.minecraft_version}"
 	implementation "net.fabricmc:fabric-loader:${project.loader_version}"
 	implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+	// Pandorical server-driven UI (local JAR — required at runtime, provided by server operator)
+	implementation files("../pandorical/build/libs/pandorical-1.0.0.jar")
 
 	// Optional: village-quests integration (compile-only, not bundled at runtime)
 	if (file("../village-quests/build/libs/village-quests-1.0.0.jar").exists()) {

@@ -149,10 +149,6 @@ public class VillageData {
       return this.inventoryWrapper;
    }
 
-   public Container getInventoryForTable(BlockPos tablePos) {
-      return this.inventoryWrapper;
-   }
-
    public NonNullList<ItemStack> getInventoryStacks() {
       return this.inventory;
    }

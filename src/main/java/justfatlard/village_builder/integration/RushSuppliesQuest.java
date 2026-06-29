@@ -79,7 +79,7 @@ public class RushSuppliesQuest extends VillagerQuest {
       };
       player.sendSystemMessage(
          Component.literal(requesterName + ": \"" + responses[ThreadLocalRandom.current().nextInt(responses.length)] + "\"")
-            .withStyle(ChatFormatting.GREEN), false);
+            .withStyle(ChatFormatting.GREEN), true);
       this.completed = true;
    }
 

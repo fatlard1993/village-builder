@@ -12,19 +12,16 @@ import justfatlard.village_builder.building.StructureRegistry;
 import justfatlard.village_builder.building.StructureType;
 import justfatlard.village_builder.integration.BuilderMailRegistration;
 import justfatlard.village_builder.integration.BuilderQuestRegistration;
-import justfatlard.village_builder.screen.BuildersTableData;
-import justfatlard.village_builder.screen.BuildersTableScreenHandler;
 import justfatlard.village_builder.village.VillageData;
 import justfatlard.village_builder.village.VillageDataManager;
-import justfatlard.village_builder.world.BuildersTableFeature;
+import justfatlard.village_builder.world.WorkshopJigsawInjector;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLevelEvents;
-import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
-import net.fabricmc.fabric.api.object.builder.v1.block.entity.FabricBlockEntityTypeBuilder;
+import justfatlard.village_builder.world.BuildersTableFeature;
 import net.fabricmc.fabric.api.object.builder.v1.world.poi.PoiHelper;
-import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.fabricmc.loader.api.FabricLoader;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -39,6 +36,8 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.villager.VillagerProfession;
+import net.fabricmc.fabric.api.creativetab.v1.FabricCreativeModeTab;
+import net.minecraft.server.permissions.Permissions;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
@@ -47,6 +46,8 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntityType;
 import net.minecraft.world.level.block.state.BlockBehaviour;
+import java.util.Set;
+import net.minecraft.world.level.levelgen.structure.pools.StructureTemplatePool;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -74,23 +75,20 @@ public class Main implements ModInitializer {
    );
    public static PoiType BUILDERS_TABLE_POI;
    public static VillagerProfession BUILDER;
-   public static ExtendedMenuType<BuildersTableScreenHandler, BuildersTableData> BUILDERS_TABLE_SCREEN_HANDLER;
    public static final BuildingManager BUILDING_MANAGER = new BuildingManager();
    public static final VillageDataManager VILLAGE_DATA_MANAGER = new VillageDataManager();
    public static final StructureRegistry STRUCTURE_REGISTRY = new StructureRegistry();
 
    public void onInitialize() {
+      WorkshopJigsawInjector.inject();
       Registry.register(BuiltInRegistries.BLOCK, BUILDERS_TABLE_ID, BUILDERS_TABLE_BLOCK);
       BUILDERS_TABLE_BLOCK_ENTITY = Registry.register(
          BuiltInRegistries.BLOCK_ENTITY_TYPE,
          BUILDERS_TABLE_ID,
-         FabricBlockEntityTypeBuilder.create(BuildersTableBlockEntity::new, BUILDERS_TABLE_BLOCK).build()
+         new BlockEntityType<>(BuildersTableBlockEntity::new, Set.of(BUILDERS_TABLE_BLOCK))
       );
       Registry.register(BuiltInRegistries.ITEM, BUILDERS_TABLE_ID, BUILDERS_TABLE_ITEM);
       Registry.register(BuiltInRegistries.ITEM, BUILDERS_FLAG_ID, BUILDERS_FLAG_ITEM);
-      BUILDERS_TABLE_SCREEN_HANDLER = Registry.register(
-         BuiltInRegistries.MENU, BUILDERS_TABLE_ID, new ExtendedMenuType<>(BuildersTableScreenHandler::new, BuildersTableData.CODEC)
-      );
       BUILDERS_TABLE_POI = PoiHelper.register(BUILDERS_TABLE_ID, 1, 48, BUILDERS_TABLE_BLOCK);
       BUILDER = Registry.register(
          BuiltInRegistries.VILLAGER_PROFESSION,
@@ -106,6 +104,10 @@ public class Main implements ModInitializer {
          )
       );
       BuilderTrades.register();
+
+      // Register Pandorical screen handlers for the Builder's Table
+      BuildersTableBlockEntity.registerPandoricalHandlers(BlockPos.ZERO);
+
       ServerLevelEvents.LOAD.register((server, world) -> {
          if (world.dimension() == Level.OVERWORLD) {
             STRUCTURE_REGISTRY.clear();
@@ -118,12 +120,17 @@ public class Main implements ModInitializer {
          }
       });
       ServerLevelEvents.UNLOAD.register((server, world) -> {
-         BuildersTableFeature.clearForWorld(world.dimension());
          if (world.dimension() == Level.OVERWORLD) {
             VILLAGE_DATA_MANAGER.reset();
             STRUCTURE_REGISTRY.clear();
          }
       });
+
+      // Spawn a bare workbench block near the village bell when a new chunk loads.
+      // One block per bell, no workshop building — the block relocates after each construction.
+      ServerChunkEvents.CHUNK_LOAD.register((world, chunk, isNew) ->
+          BuildersTableFeature.trySpawnInVillage(world, chunk.getPos().getWorldPosition()));
+
       ServerTickEvents.END_LEVEL_TICK.register(world -> {
          if (world instanceof ServerLevel && world.dimension() == Level.OVERWORLD) {
             VILLAGE_DATA_MANAGER.tick(world);
@@ -152,7 +159,7 @@ public class Main implements ModInitializer {
          .register(
             (dispatcher, registryAccess, environment) -> dispatcher.register(
                Commands.literal("villagebuilder")
-                  .requires(source -> source.permissions().hasPermission(net.minecraft.server.permissions.Permissions.COMMANDS_GAMEMASTER))
+                  .requires(source -> source.permissions().hasPermission(Permissions.COMMANDS_GAMEMASTER))
                   .then(
                      Commands.literal("status")
                         .executes(

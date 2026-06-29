@@ -161,7 +161,7 @@ public class BuilderMailRegistration {
    }
 
    private static List<UUID> findTrustedResidents(MinecraftServer server, BlockPos villageCenter) {
-      List<UUID> allResidents = VillageMailIntegration.findMailboxOwnersNear(server, villageCenter, "minecraft:overworld", 96);
+      List<UUID> allResidents = VillageMailIntegration.findMailboxOwnersNear(server, villageCenter, OVERWORLD_DIMENSION, 96);
       if (!VillageQuestsIntegration.AVAILABLE) {
          return allResidents;
       } else {

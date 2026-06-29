@@ -25,6 +25,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.RandomSource;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -54,7 +55,7 @@ class ConstructionOrchestrator {
       Map.entry(Items.DIRT, 12),
       Map.entry(Items.SANDSTONE, 10),
       Map.entry(Items.TERRACOTTA, 8),
-      Map.entry(Items.WHITE_WOOL, 6),
+      Map.entry(Items.WOOL.pick(DyeColor.WHITE), 6),
       Map.entry(Items.OAK_LOG, 6),
       Map.entry(Items.SPRUCE_LOG, 6),
       Map.entry(Items.BIRCH_LOG, 6),
@@ -77,7 +78,7 @@ class ConstructionOrchestrator {
       Map.entry(Items.GLASS_PANE, 4),
       Map.entry(Items.TUFF_BRICKS, 8),
       Map.entry(Items.DEEPSLATE_BRICKS, 6),
-      Map.entry(Items.COPPER_BLOCK, 3),
+      Map.entry(Items.COPPER_BLOCK.weathering().unaffected(), 3),
       Map.entry(Items.GLOWSTONE, 2),
       Map.entry(Items.CHEST, 2),
       Map.entry(Items.PUMPKIN, 3),
@@ -289,6 +290,7 @@ class ConstructionOrchestrator {
 
       this.celebrateNewBuilding(world, buildPos);
       villageData.recordBuiltStructure(buildPos, clearanceSize);
+      this.relocateWorkbench(world, villageData, buildPos);
       villageData.resetPlacementFailures();
       villageData.clearCurrentPlan();
       villageData.clearAnalyzer();
@@ -338,6 +340,47 @@ class ConstructionOrchestrator {
    }
 
    // --- Private implementation ---
+
+   /**
+    * After a successful construction, physically move the Builders Table block
+    * to a position near the new build site. This signals to players where the
+    * next construction will be — builders move from worksite to worksite.
+    */
+   private void relocateWorkbench(ServerLevel world, VillageData villageData, BlockPos buildPos) {
+      BlockPos oldCenter = villageData.getVillageCenter();
+      RandomSource random = world.getRandom();
+
+      // Find a clear surface spot 8-15 blocks from the build site
+      BlockPos newCenter = null;
+      for (int attempt = 0; attempt < 24; attempt++) {
+         double angle = random.nextFloat() * Math.PI * 2.0;
+         int dist = 8 + random.nextInt(8); // 8-15 blocks away
+         int x = buildPos.getX() + (int)(Math.cos(angle) * dist);
+         int z = buildPos.getZ() + (int)(Math.sin(angle) * dist);
+         int y = world.getHeight(Types.MOTION_BLOCKING_NO_LEAVES, x, z);
+         BlockPos candidate = new BlockPos(x, y, z);
+         if (world.getBlockState(candidate).isAir()
+               && world.getBlockState(candidate.below()).isSolid()
+               && !villageData.overlapsExistingStructure(candidate, 2)) {
+            newCenter = candidate;
+            break;
+         }
+      }
+      if (newCenter == null) {
+         LOGGER.debug("Could not find relocation spot near {} — workbench stays at {}", buildPos, oldCenter);
+         return;
+      }
+
+      // Move the physical block
+      world.removeBlock(oldCenter, false);
+      world.setBlock(newCenter, Main.BUILDERS_TABLE_BLOCK.defaultBlockState(), Block.UPDATE_ALL);
+
+      // Update in-memory structures immediately (POI scan will confirm on next tick)
+      this.migrateCenter(oldCenter, newCenter);
+      villageData.setVillageCenter(newCenter);
+
+      LOGGER.info("Workbench relocated from {} to {} near new build at {}", oldCenter, newCenter, buildPos);
+   }
 
    private BlockPos findBuildingSpot(ServerLevel world, VillageData villageData, int clearanceSize) {
       BlockPos center = villageData.getVillageCenter();

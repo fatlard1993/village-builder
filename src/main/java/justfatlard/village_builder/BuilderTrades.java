@@ -20,6 +20,7 @@ import net.minecraft.resources.Identifier;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.entity.npc.villager.Villager;
+import net.minecraft.world.item.DyeColor;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -53,9 +54,9 @@ public class BuilderTrades {
         Items.GLASS, Items.GLASS_PANE, Items.DIRT, Items.GRASS_BLOCK,
         Items.SAND, Items.SANDSTONE, Items.BRICKS,
         Items.IRON_INGOT, Items.GOLD_INGOT,
-        Items.WHITE_WOOL, Items.RED_WOOL, Items.BLUE_WOOL,
+        Items.WOOL.pick(DyeColor.WHITE), Items.WOOL.pick(DyeColor.RED), Items.WOOL.pick(DyeColor.BLUE),
         Items.TERRACOTTA, Items.DEEPSLATE_BRICKS,
-        Items.TUFF_BRICKS, Items.COPPER_BLOCK, Items.ANVIL, Items.LEATHER,
+        Items.TUFF_BRICKS, Items.COPPER_BLOCK.weathering().unaffected(), Items.ANVIL, Items.LEATHER,
         Items.IRON_PICKAXE, Items.IRON_AXE, Items.IRON_SHOVEL
     };
 
@@ -87,9 +88,9 @@ public class BuilderTrades {
 
     /** Level 4 — decorative/glass/wool/terracotta */
     private static final Item[] LEVEL_4_ITEMS = {
-        Items.GLASS, Items.GLASS_PANE, Items.WHITE_WOOL, Items.RED_WOOL,
-        Items.BLUE_WOOL, Items.TERRACOTTA, Items.SANDSTONE, Items.BRICKS,
-        Items.DEEPSLATE_BRICKS, Items.TUFF_BRICKS, Items.COPPER_BLOCK
+        Items.GLASS, Items.GLASS_PANE, Items.WOOL.pick(DyeColor.WHITE), Items.WOOL.pick(DyeColor.RED),
+        Items.WOOL.pick(DyeColor.BLUE), Items.TERRACOTTA, Items.SANDSTONE, Items.BRICKS,
+        Items.DEEPSLATE_BRICKS, Items.TUFF_BRICKS, Items.COPPER_BLOCK.weathering().unaffected()
     };
 
     /** Level 5 — metals/tools/leather */
@@ -115,11 +116,11 @@ public class BuilderTrades {
                 || item == Items.CHERRY_PLANKS || item == Items.BAMBOO_PLANKS
                 || item == Items.CRIMSON_PLANKS || item == Items.WARPED_PLANKS) return 12;
         if (item == Items.GLASS || item == Items.GLASS_PANE) return 6;
-        if (item == Items.WHITE_WOOL || item == Items.RED_WOOL || item == Items.BLUE_WOOL) return 6;
+        if (item == Items.WOOL.pick(DyeColor.WHITE) || item == Items.WOOL.pick(DyeColor.RED) || item == Items.WOOL.pick(DyeColor.BLUE)) return 6;
         if (item == Items.TERRACOTTA) return 8;
         if (item == Items.SANDSTONE || item == Items.BRICKS) return 10;
         if (item == Items.DEEPSLATE_BRICKS || item == Items.TUFF_BRICKS) return 8;
-        if (item == Items.COPPER_BLOCK) return 4;
+        if (item == Items.COPPER_BLOCK.weathering().unaffected()) return 4;
         if (item == Items.IRON_INGOT) return 4;
         if (item == Items.GOLD_INGOT) return 2;
         if (item == Items.IRON_PICKAXE || item == Items.IRON_AXE || item == Items.IRON_SHOVEL) return 1;
