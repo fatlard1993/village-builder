@@ -101,7 +101,7 @@ public class VillagerEntityMixin {
                      Main.VILLAGE_DATA_MANAGER.setVillagePlan(serverWorld, tablePos, plan, patronUuid, patronName);
                      LOGGER.debug("Village plan set to: {}", plan.getDisplayName());
                   } else {
-                     LOGGER.warn("Could not determine structure from plan paper — structure may have been unregistered");
+                     LOGGER.warn("Could not determine structure from plan paper; structure may have been unregistered");
                      if (villager.getTradingPlayer() instanceof ServerPlayer player) {
                         player.sendSystemMessage(Component.translatable("message.village-builder.plan_invalid"));
                      }

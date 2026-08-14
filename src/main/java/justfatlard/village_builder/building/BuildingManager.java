@@ -439,7 +439,7 @@ public class BuildingManager {
       for (int x = 0; x < width; x++) {
          for (int z = 0; z < depth; z++) {
             if (!world.hasChunk((origin.getX() + x) >> 4, (origin.getZ() + z) >> 4)) {
-               LOGGER.warn("Terrain prep aborted at {} — chunk unloaded during height sampling", origin);
+               LOGGER.warn("Terrain prep aborted at {}: chunk unloaded during height sampling", origin);
                return false;
             }
             int surfaceY = world.getHeight(Types.MOTION_BLOCKING_NO_LEAVES, origin.getX() + x, origin.getZ() + z);
@@ -453,7 +453,7 @@ public class BuildingManager {
       for (int x = -1; x <= width; x++) {
          for (int z = -1; z <= depth; z++) {
             if (!world.hasChunk((origin.getX() + x) >> 4, (origin.getZ() + z) >> 4)) {
-               LOGGER.warn("Terrain prep aborted at {} — chunk unloaded mid-operation at column ({}, {})",
+               LOGGER.warn("Terrain prep aborted at {}: chunk unloaded mid-operation at column ({}, {})",
                   origin, origin.getX() + x, origin.getZ() + z);
                return false;
             }

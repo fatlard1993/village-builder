@@ -87,7 +87,7 @@ public class StructureAnalyzer {
 
             blockInfos = ((Palette)template.palettes.getFirst()).blocks();
          } catch (Exception var24) {
-            LOGGER.error("Failed to access block info for template {} — access widener may not be applied correctly", templateId, var24);
+            LOGGER.error("Failed to access block info for template {}; access widener may not be applied correctly", templateId, var24);
             return null;
          }
 

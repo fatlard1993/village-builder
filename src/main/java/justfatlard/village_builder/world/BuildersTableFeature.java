@@ -27,7 +27,7 @@ import org.slf4j.LoggerFactory;
 public class BuildersTableFeature {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
    private static final int MAX_EVALUATED_BELLS = 10000;
-   // Cap in-flight POI searches — during rapid chunk loading this prevents the
+   // Cap in-flight POI searches: during rapid chunk loading this prevents the
    // server execute queue from filling with dozens of concurrent bell scans.
    private static final int MAX_PENDING_SEARCHES = 4;
    private static final java.util.concurrent.atomic.AtomicInteger pendingSearches = new java.util.concurrent.atomic.AtomicInteger(0);
@@ -45,7 +45,7 @@ public class BuildersTableFeature {
       int cx = chunkPos.getX() + 8;
       int cz = chunkPos.getZ() + 8;
 
-      // Quantize to 128-block grid — one POI search covers a 48-block radius so
+      // Quantize to 128-block grid: one POI search covers a 48-block radius so
       // there is no benefit firing more than once per 128×128 cell.
       long zoneKey = ((long)(cx >> 7) << 32) | ((cz >> 7) & 0xFFFFFFFFL);
       Set<Long> zones = queriedZones.computeIfAbsent(world.dimension(), k -> new java.util.HashSet<>());
@@ -64,7 +64,7 @@ public class BuildersTableFeature {
       }
 
       if (pendingSearches.get() >= MAX_PENDING_SEARCHES) {
-         // Server is busy with other bell scans — remove the zone so it can retry later.
+         // Server is busy with other bell scans; remove the zone so it can retry later.
          zones.remove(zoneKey);
          return;
       }
@@ -103,7 +103,7 @@ public class BuildersTableFeature {
 
       RandomSource random = world.getRandom();
       if (random.nextInt(10) > 8) {
-         LOGGER.info("Bell at {} — skipped by chance roll (10%% miss)", bellPos.get());
+         LOGGER.info("Bell at {}: skipped by chance roll (10%% miss)", bellPos.get());
          return;
       }
 
@@ -117,7 +117,7 @@ public class BuildersTableFeature {
 
       BlockPos tablePos = findSuitableLocation(world, bellPos.get(), random);
       if (tablePos == null) {
-         LOGGER.warn("Bell at {} — no suitable location found in 40 attempts", bellPos.get());
+         LOGGER.warn("Bell at {}: no suitable location found in 40 attempts", bellPos.get());
          return;
       }
 
@@ -130,7 +130,7 @@ public class BuildersTableFeature {
          int x = center.getX() + random.nextIntBetweenInclusive(-20, 20);
          int z = center.getZ() + random.nextIntBetweenInclusive(-20, 20);
          // getChunkNow returns null if the chunk isn't fully loaded yet.
-         // getHeight() would block waiting for full chunk status — deadlock inside
+         // getHeight() would block waiting for full chunk status: deadlock inside
          // a chunk-load callback chain. Use the heightmap on the already-loaded chunk instead.
          LevelChunk chunk = world.getChunkSource().getChunkNow(x >> 4, z >> 4);
          if (chunk == null) continue;

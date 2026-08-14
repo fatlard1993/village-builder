@@ -1,10 +1,10 @@
 # Village Builder
 
-A Fabric mod for Minecraft 1.21.11 that makes villages grow on their own. A new Builder villager profession analyzes what the village needs, gathers materials at dawn, and constructs real structures from vanilla templates. You're a patron — you accelerate growth, but you don't cause it.
+A Fabric mod that makes villages grow on their own. A new Builder villager profession analyzes what the village needs, gathers materials at dawn, and constructs real structures from vanilla templates. You're a patron: you accelerate growth, but you don't cause it.
 
 ## How It Works
 
-Villages analyze their own needs — housing, food, workshops, defenses — and select construction plans accordingly. Structures are **discovered at runtime** from Minecraft's own per-biome village templates, with material requirements derived from actual block composition. A plains village builds plains structures. A taiga village builds taiga structures. No hardcoded lists.
+Villages analyze their own needs (housing, food, workshops, defenses) and select construction plans accordingly. Structures are **discovered at runtime** from Minecraft's own per-biome village templates, with material requirements derived from actual block composition. A plains village builds plains structures. A taiga village builds taiga structures. No hardcoded lists.
 
 The Builder villager gathers materials autonomously each dawn. You can speed things up by trading materials or depositing them in the Builder's Table. When everything's ready, the structure appears at dawn. Villagers gather to look. The cycle continues.
 
@@ -13,12 +13,12 @@ The Builder villager gathers materials autonomously each dawn. You can speed thi
 ### Builder Villager Profession
 - New "Builder" villager profession with 5 levels of randomized trades
 - Uses the Builder's Table as their workstation
-- Buys building materials — pays more for what the village needs, less for surplus
+- Buys building materials: pays more for what the village needs, less for surplus
 - Sells structure plans that let you nudge the village's direction
 - Gathers materials autonomously each dawn (rate scales with number of builders)
 
 ### Builder's Table
-- Custom workstation block that serves as the village construction hub
+- Custom workstation block that is the village construction hub
 - Opens a shared village inventory where players can deposit building materials
 - Shows the current construction plan, progress percentage, and material requirements
 - Crafted from a Crafting Table + Smithing Table + Stonecutter + Furnace (2x2)
@@ -27,9 +27,9 @@ The Builder villager gathers materials autonomously each dawn. You can speed thi
 
 ### Dynamic Structure Discovery
 - Scans vanilla village NBT templates at server startup across 5 biomes (plains, taiga, desert, savanna, snowy)
-- Derives material requirements from actual block composition — bigger buildings genuinely cost more
+- Derives material requirements from actual block composition; bigger buildings cost more
 - Classifies structures by need: beds = housing, crops = food, workstations = profession, walls = defense
-- Other mods can register structures into the pool via the API — they compete on equal footing
+- Other mods can register structures into the pool via the API; they compete on equal footing
 
 ### Village Needs Analysis
 - Scans village conditions: housing, food supply, farmland, profession diversity, defenses
@@ -39,7 +39,7 @@ The Builder villager gathers materials autonomously each dawn. You can speed thi
 ### Construction System
 - Plans auto-assigned on village discovery and after each completed build
 - Players can buy alternative plans from Builder villagers to influence the direction
-- Materials tracked in a shared 27-slot inventory — what you see is what the village has
+- Materials tracked in a shared 27-slot inventory: what you see is what the village has
 - Construction triggers at dawn when all materials are gathered and a Builder is present
 - Villagers gather to admire new buildings; nearby players receive chat announcements
 
@@ -48,9 +48,9 @@ The Builder villager gathers materials autonomously each dawn. You can speed thi
 Villages celebrate the seasons with special structures that appear in the build pool at certain times of year. Keep an eye on your villages during the holidays.
 
 ### Server Commands
-- `/villagebuilder status` — View the nearest village's plan, progress, and materials
-- `/villagebuilder list` — Count of all tracked villages
-- `/villagebuilder reassign` — Force plan reassignment for the nearest village
+- `/villagebuilder status`: view the nearest village's plan, progress, and materials
+- `/villagebuilder list`: count of all tracked villages
+- `/villagebuilder reassign`: force plan reassignment for the nearest village
 
 ### Optional Mod Integration
 - **village-mail**: Registers post office and mailbox structures. Sends construction updates and milestone letters to players with mailboxes nearby.
@@ -58,14 +58,15 @@ Villages celebrate the seasons with special structures that appear in the build 
 
 ### Limitations
 - Overworld only. Builder's Tables placed in other dimensions will not function.
-- Requires installation on both client and server (custom screen handler).
+- Opening the Builder's Table requires Pandorical on the player's client; see [Pandorical](#pandorical) below.
+
+## Pandorical
+
+Village Builder uses Pandorical's `screens()` API to build and drive the Builder's Table UI (shared village inventory, current plan, progress, and material requirements) entirely server-side. Pandorical must be installed client-side to open the Builder's Table. A player without Pandorical who tries to open the table gets a chat message telling them Pandorical is required, instead of a broken or missing screen. The rest of the mod (the Builder villager profession, trades, autonomous material gathering, and construction) works independently of Pandorical.
 
 ## Installation
 
-1. Minecraft 1.21.11
-2. Fabric Loader 0.18.1+
-3. Fabric API 0.140.2+
-4. Place the mod JAR in your mods folder
+Install alongside its declared dependencies (see `fabric.mod.json`). Targets the Minecraft, Fabric Loader, and Fabric API versions declared in this mod's `gradle.properties`; check there for the exact currently-supported version.
 
 ## Building from Source
 
@@ -83,7 +84,7 @@ Other mods can integrate with Village Builder via `VillageBuilderAPI`. See [INTE
 import justfatlard.village_builder.api.VillageBuilderAPI;
 import justfatlard.village_builder.api.VillageBuilderAPI.DonationResult;
 
-// Process donated items — accepts building materials, rejects non-materials
+// Process donated items: accepts building materials, rejects non-materials
 DonationResult result = VillageBuilderAPI.processDonatedMaterials(
     world, donationPos, donatedItems
 );
@@ -99,7 +100,7 @@ VillageBuilderAPI.registerStructurePersistent(
 
 ## License
 
-MIT License — See LICENSE file for details.
+MIT License; see the LICENSE file for details.
 
 ## Credits
 

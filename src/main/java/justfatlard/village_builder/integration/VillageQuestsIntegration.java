@@ -21,7 +21,7 @@ public class VillageQuestsIntegration {
                return name;
             }
          } catch (Exception var3) {
-            LOGGER.warn("Failed to get village name — village-quests API may have changed: {}", var3.getMessage());
+            LOGGER.warn("Failed to get village name; village-quests API may have changed: {}", var3.getMessage());
          }
 
          return null;
@@ -37,7 +37,7 @@ public class VillageQuestsIntegration {
                return rep;
             }
          } catch (Exception var4) {
-            LOGGER.warn("Failed to get player reputation — village-quests API may have changed: {}", var4.getMessage());
+            LOGGER.warn("Failed to get player reputation; village-quests API may have changed: {}", var4.getMessage());
          }
 
          return 0;
@@ -52,7 +52,7 @@ public class VillageQuestsIntegration {
             modifyPlayerReputationMethod.invoke(null, player, villageCenter, amount, reason);
             return true;
          } catch (Exception var5) {
-            LOGGER.warn("Failed to modify player reputation — village-quests API may have changed: {}", var5.getMessage());
+            LOGGER.warn("Failed to modify player reputation; village-quests API may have changed: {}", var5.getMessage());
             return false;
          }
       } else {
@@ -69,25 +69,25 @@ public class VillageQuestsIntegration {
             try {
                getVillageNameMethod = villageAPI.getMethod("getVillageName", BlockPos.class);
             } catch (NoSuchMethodException var5) {
-               LOGGER.warn("village-quests: getVillageName not found — village names unavailable");
+               LOGGER.warn("village-quests: getVillageName not found; village names unavailable");
             }
 
             try {
                getPlayerReputationMethod = villageAPI.getMethod("getPlayerReputation", ServerPlayer.class, BlockPos.class);
             } catch (NoSuchMethodException var4) {
-               LOGGER.warn("village-quests: getPlayerReputation not found — reputation checks unavailable");
+               LOGGER.warn("village-quests: getPlayerReputation not found; reputation checks unavailable");
             }
 
             try {
                modifyPlayerReputationMethod = villageAPI.getMethod("modifyPlayerReputation", ServerPlayer.class, BlockPos.class, int.class, String.class);
             } catch (NoSuchMethodException var3) {
-               LOGGER.warn("village-quests: modifyPlayerReputation not found — reputation modification unavailable");
+               LOGGER.warn("village-quests: modifyPlayerReputation not found; reputation modification unavailable");
             }
 
             loaded = true;
             LOGGER.info("village-quests integration loaded (names: {}, reputation: {})", getVillageNameMethod != null, modifyPlayerReputationMethod != null);
          } catch (ClassNotFoundException var6) {
-            LOGGER.warn("village-quests mod is installed but its API class was not found — integration disabled.");
+            LOGGER.warn("village-quests mod is installed but its API class was not found; integration disabled.");
          } catch (Exception var7) {
             LOGGER.warn("village-quests mod detected but API unavailable: {}", var7.getMessage());
          }

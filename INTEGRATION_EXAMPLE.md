@@ -10,13 +10,13 @@ The Village Builder mod provides an API for other mods to interact with village 
 import justfatlard.village_builder.api.VillageBuilderAPI;
 import justfatlard.village_builder.api.VillageBuilderAPI.DonationResult;
 
-// Process donated items — returns accepted, rejected, and overflow info
+// Process donated items: returns accepted, rejected, and overflow info
 DonationResult result = VillageBuilderAPI.processDonatedMaterials(
     world, donationPos, donatedItems
 );
-// result.accepted()    — items the village kept as building materials
-// result.rejected()    — items that aren't building materials (return to sender, etc.)
-// result.overflowLost() — number of building material items that didn't fit (lost — not dropped as entities)
+// result.accepted()    = items the village kept as building materials
+// result.rejected()    = items that aren't building materials (return to sender, etc.)
+// result.overflowLost() = number of building material items that didn't fit (lost, not dropped as entities)
 
 // Check if an item is a valid building material
 boolean valid = VillageBuilderAPI.isBuildingMaterial(Items.COBBLESTONE); // true
@@ -26,14 +26,14 @@ boolean invalid = VillageBuilderAPI.isBuildingMaterial(Items.DIAMOND_SWORD); // 
 boolean needed = VillageBuilderAPI.isNeededForConstruction(world, villagePos, Items.OAK_LOG);
 
 // Get current construction status text (or null if no active plan)
-Text status = VillageBuilderAPI.getConstructionStatus(world, villagePos);
+Component status = VillageBuilderAPI.getConstructionStatus(world, villagePos);
 ```
 
 ### Village-Mail Integration Example
 
 ```java
 public class VillageMailIntegration {
-    public static void deliverMaterials(ServerWorld world, BlockPos mailboxPos, List<ItemStack> items) {
+    public static void deliverMaterials(ServerLevel world, BlockPos mailboxPos, List<ItemStack> items) {
         if (!FabricLoader.getInstance().isModLoaded("village-builder")) {
             return;
         }
@@ -47,7 +47,7 @@ public class VillageMailIntegration {
         // result.overflowLost() = number of items lost because the village inventory was full
 
         if (result.overflowLost() > 0) {
-            // Handle overflow — the village's 27-slot inventory was full
+            // Handle overflow: the village's 27-slot inventory was full
         }
     }
 }
@@ -79,7 +79,7 @@ VillageBuilderAPI.registerStructurePersistent(
 );
 ```
 
-Alternatively, use `registerStructure` for one-time registration (e.g., after world load events), but note that the registration will be lost on the next world reload unless you re-register.
+Alternatively, use `registerStructure` for one-time registration (e.g., after world load events), but the registration will be lost on the next world reload unless you re-register.
 
 ### NBT Template Registration
 
@@ -104,7 +104,7 @@ VillageBuilderAPI.registerTemplatePersistent(
 
 **Multi-need structures:** A structure can satisfy multiple needs. Use `Set.of(VillageNeed.HOUSING, VillageNeed.FOOD)` for a farmhouse with beds that satisfies both housing and food needs. The single-need convenience methods wrap the value in a `Set.of()` for you.
 
-The display name you provide is what players see in the Builder's Table GUI and trade offers. Choose something a villager would say — "Castle House", not "mymod_castle_house_v2".
+The display name you provide is what players see in the Builder's Table GUI and trade offers. Choose something a villager would say: "Castle House", not "mymod_castle_house_v2".
 
 Registered structures compete on equal footing with vanilla structures. The village will choose them based on need and biome match.
 
@@ -166,7 +166,7 @@ The full list of accepted building materials is drawn from two sources: `Builder
 
 **Note:** `processDonatedMaterials` sends a notification message to players within 64 blocks when materials are accepted. If your mod also sends notifications, consider suppressing your own to avoid double messages.
 
-**Note:** The village inventory has 27 slots. During trade interactions, overflow materials are dropped as item entities near the table. Via the API (`processDonatedMaterials`), overflow items are **not** dropped — they are silently lost. Check `result.overflowLost()` to detect this and handle accordingly.
+**Note:** The village inventory has 27 slots. During trade interactions, overflow materials are dropped as item entities near the table. Via the API (`processDonatedMaterials`), overflow items are **not** dropped; they are silently lost. Check `result.overflowLost()` to detect this and handle accordingly.
 
 **Note:** All API methods access shared mutable state and should only be called from the server thread.
 
@@ -182,4 +182,4 @@ Add to your `fabric.mod.json`:
 }
 ```
 
-This makes village-builder an optional integration — your mod works without it, but adds features when both are installed.
+This makes village-builder an optional integration: your mod works without it, but adds features when both are installed.

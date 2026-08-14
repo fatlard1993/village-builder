@@ -25,7 +25,7 @@ import org.slf4j.LoggerFactory;
 
 public class VillageData {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
-   private static final int CURRENT_NBT_VERSION = 3; // v3: added preferredBuildSite (optional, null-default on v1–v2 load)
+   private static final int CURRENT_NBT_VERSION = 3; // v3: added preferredBuildSite (optional, null-default on v1-v2 load)
    private BlockPos villageCenter;
    private StructurePlan currentPlan = null;
    private final NonNullList<ItemStack> inventory = NonNullList.withSize(27, ItemStack.EMPTY);
@@ -243,7 +243,7 @@ public class VillageData {
          }
       }
       if (!toAdd.isEmpty()) {
-         LOGGER.warn("Village inventory full — {}x {} could not fit", toAdd.getCount(), toAdd.getItem());
+         LOGGER.warn("Village inventory full; {}x {} could not fit", toAdd.getCount(), toAdd.getItem());
       }
    }
 
@@ -335,7 +335,7 @@ public class VillageData {
          return fromNbtInternal(nbt);
       } catch (Exception e) {
          LOGGER.error(
-            "Failed to deserialize village data at ({}, {}, {}) [nbtVersion={}] — inventory, plan, and structure history were lost. This is a bug; please report it.",
+            "Failed to deserialize village data at ({}, {}, {}) [nbtVersion={}]; inventory, plan, and structure history were lost. This is a bug; please report it.",
             cx, cy, cz, version, e
          );
          return new VillageData(new BlockPos(cx, cy, cz));
@@ -345,7 +345,7 @@ public class VillageData {
    private static VillageData fromNbtInternal(CompoundTag nbt) {
       int version = nbt.getIntOr("nbtVersion", 0);
       if (version > CURRENT_NBT_VERSION) {
-         LOGGER.warn("Village data has newer version {} (current: {}) — loading anyway, some data may be lost", version, CURRENT_NBT_VERSION);
+         LOGGER.warn("Village data has newer version {} (current: {}); loading anyway, some data may be lost", version, CURRENT_NBT_VERSION);
       }
 
       BlockPos center = new BlockPos(
@@ -383,7 +383,7 @@ public class VillageData {
                if (entry != null) {
                   data.currentPlan = new StructurePlan(entry);
                } else {
-                  LOGGER.warn("Could not resolve saved plan '{}' — will reassign on next tick", planId);
+                  LOGGER.warn("Could not resolve saved plan '{}'; will reassign on next tick", planId);
                }
             }
          }

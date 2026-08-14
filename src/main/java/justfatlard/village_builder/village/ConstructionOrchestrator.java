@@ -167,7 +167,7 @@ class ConstructionOrchestrator {
       BlockPos center = villageData.getVillageCenter();
       this.builderCountCache.remove(center); // force fresh count before building
       if (!this.hasBuilder(world, center)) {
-         LOGGER.debug("Builder no longer present at {} — construction deferred", center);
+         LOGGER.debug("Builder no longer present at {}; construction deferred", center);
          return;
       }
 
@@ -179,7 +179,7 @@ class ConstructionOrchestrator {
       } else if (resolvedType != null) {
          clearanceSize = resolvedType.getFootprintSize();
       } else {
-         LOGGER.error("Unknown structure '{}' in plan — reassigning", plan.getStructureId());
+         LOGGER.error("Unknown structure '{}' in plan; reassigning", plan.getStructureId());
          villageData.clearCurrentPlan();
          villageData.clearAnalyzer();
          manager.markPersistentDirty();
@@ -189,7 +189,7 @@ class ConstructionOrchestrator {
 
       List<ItemStack> snapshot = villageData.snapshotAndConsumeMaterials();
       if (snapshot == null) {
-         LOGGER.debug("Materials no longer sufficient for {} — construction deferred", plan.getDisplayName());
+         LOGGER.debug("Materials no longer sufficient for {}; construction deferred", plan.getDisplayName());
          return;
       }
 
@@ -204,14 +204,14 @@ class ConstructionOrchestrator {
 
          if (villageData.getPlacementFailures() >= VillageData.MAX_PLACEMENT_FAILURES) {
             if (villageData.getBuiltStructures().size() >= 35) {
-               LOGGER.info("Village at {} appears full ({} structures) — pausing construction",
+               LOGGER.info("Village at {} appears full ({} structures); pausing construction",
                   center, villageData.getBuiltStructures().size());
                villageData.resetPlacementFailures();
                villageData.clearCurrentPlan();
                manager.markPersistentDirty();
                manager.notifyVillage(world, center, Component.translatable("message.village-builder.village_full"));
             } else {
-               LOGGER.warn("Plan {} failed placement {} times — reassigning",
+               LOGGER.warn("Plan {} failed placement {} times; reassigning",
                   plan.getDisplayName(), villageData.getPlacementFailures());
                villageData.resetPlacementFailures();
                villageData.clearCurrentPlan();
@@ -222,7 +222,7 @@ class ConstructionOrchestrator {
                   Component.translatable("message.village-builder.plan_changed_no_space"));
             }
          } else {
-            LOGGER.warn("No build location for {} (attempt {}/{}) — materials restored, cooldown applied",
+            LOGGER.warn("No build location for {} (attempt {}/{}); materials restored, cooldown applied",
                plan.getDisplayName(), villageData.getPlacementFailures(), VillageData.MAX_PLACEMENT_FAILURES);
             manager.notifyVillage(world, center,
                Component.translatable("message.village-builder.no_build_location"));
@@ -238,7 +238,7 @@ class ConstructionOrchestrator {
          villageData.restoreInventory(snapshot);
          this.buildCooldowns.put(center, world.getServer().getTickCount() + BUILD_COOLDOWN_TICKS);
          manager.notifyVillage(world, center, Component.translatable("message.village-builder.build_failed"));
-         LOGGER.warn("Failed to build {} at {} — {} (materials restored, cooldown applied)",
+         LOGGER.warn("Failed to build {} at {}: {} (materials restored, cooldown applied)",
             plan.getDisplayName(), buildPos,
             resolvedType != null ? "hardcoded blueprint failed"
                : "template '" + plan.getStructureId() + "' missing or corrupted");
@@ -344,7 +344,7 @@ class ConstructionOrchestrator {
    /**
     * After a successful construction, physically move the Builders Table block
     * to a position near the new build site. This signals to players where the
-    * next construction will be — builders move from worksite to worksite.
+    * next construction will be; builders move from worksite to worksite.
     */
    private void relocateWorkbench(ServerLevel world, VillageData villageData, BlockPos buildPos) {
       BlockPos oldCenter = villageData.getVillageCenter();
@@ -367,7 +367,7 @@ class ConstructionOrchestrator {
          }
       }
       if (newCenter == null) {
-         LOGGER.debug("Could not find relocation spot near {} — workbench stays at {}", buildPos, oldCenter);
+         LOGGER.debug("Could not find relocation spot near {}; workbench stays at {}", buildPos, oldCenter);
          return;
       }
 
@@ -400,7 +400,7 @@ class ConstructionOrchestrator {
             LOGGER.debug("Using player-designated build site at {}", testPos);
             return testPos;
          }
-         LOGGER.debug("Designated build site at {} was invalid — falling back to random search", preferred);
+         LOGGER.debug("Designated build site at {} was invalid; falling back to random search", preferred);
       }
 
       BlockPos bestPos = null;

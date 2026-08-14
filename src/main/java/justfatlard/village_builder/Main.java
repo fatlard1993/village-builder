@@ -14,7 +14,6 @@ import justfatlard.village_builder.integration.BuilderMailRegistration;
 import justfatlard.village_builder.integration.BuilderQuestRegistration;
 import justfatlard.village_builder.village.VillageData;
 import justfatlard.village_builder.village.VillageDataManager;
-import justfatlard.village_builder.world.WorkshopJigsawInjector;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerChunkEvents;
@@ -80,7 +79,6 @@ public class Main implements ModInitializer {
    public static final StructureRegistry STRUCTURE_REGISTRY = new StructureRegistry();
 
    public void onInitialize() {
-      WorkshopJigsawInjector.inject();
       Registry.register(BuiltInRegistries.BLOCK, BUILDERS_TABLE_ID, BUILDERS_TABLE_BLOCK);
       BUILDERS_TABLE_BLOCK_ENTITY = Registry.register(
          BuiltInRegistries.BLOCK_ENTITY_TYPE,
@@ -127,7 +125,7 @@ public class Main implements ModInitializer {
       });
 
       // Spawn a bare workbench block near the village bell when a new chunk loads.
-      // One block per bell, no workshop building — the block relocates after each construction.
+      // One block per bell, no workshop building; the block relocates after each construction.
       ServerChunkEvents.CHUNK_LOAD.register((world, chunk, isNew) ->
           BuildersTableFeature.trySpawnInVillage(world, chunk.getPos().getWorldPosition()));
 

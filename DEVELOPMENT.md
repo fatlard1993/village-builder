@@ -6,8 +6,7 @@
 village-builder/
 ├── src/main/
 │   ├── java/justfatlard/village_builder/
-│   │   ├── Main.java                     # Mod initializer — registration, events
-│   │   ├── MainClient.java              # Client entrypoint — screen registration
+│   │   ├── Main.java                     # Mod initializer: registration, events (single entrypoint; UI is Pandorical-driven, no client entrypoint)
 │   │   ├── BuilderTrades.java            # Builder profession trade definitions
 │   │   ├── api/
 │   │   │   └── VillageBuilderAPI.java    # Public API for mod integration
@@ -23,27 +22,29 @@ village-builder/
 │   │   │   ├── StructureRegistry.java    # Queryable registry (by need + biome)
 │   │   │   └── StructureType.java        # Hardcoded fallback structure definitions
 │   │   ├── integration/
+│   │   │   ├── BuilderFetchQuest.java         # Fetch-materials quest type (village-quests)
 │   │   │   ├── BuilderMailRegistration.java   # Mail notifications for village-mail
-│   │   │   ├── BuilderQuestRegistration.java  # Quest types for village-quests
+│   │   │   ├── BuilderQuestRegistration.java  # Registers quest types for village-quests
+│   │   │   ├── RushSuppliesQuest.java         # Time-sensitive delivery quest type (village-quests)
+│   │   │   ├── SurveyBuildSiteQuest.java      # Build-site survey quest type (village-quests)
 │   │   │   ├── VillageMailIntegration.java    # Soft dep via reflection (village-mail)
 │   │   │   └── VillageQuestsIntegration.java  # Soft dep via reflection (village-quests)
+│   │   ├── item/
+│   │   │   └── BuildersFlagItem.java     # Stakes a preferred build site
 │   │   ├── mixin/
 │   │   │   └── VillagerEntityMixin.java  # Hooks trade completion for material/plan tracking
 │   │   ├── screen/
-│   │   │   ├── BuildersTableScreen.java  # Client GUI
-│   │   │   ├── BuildersTableScreenHandler.java
-│   │   │   ├── BuildersTableData.java    # Server→client screen data
-│   │   │   └── VillageInventorySlot.java # Custom slot with reputation gating
+│   │   │   └── BuildersTableData.java    # Server→client Pandorical screen data (Builder's Table UI is built via Pandorical's screens() API, not a custom client screen)
 │   │   ├── util/
 │   │   │   └── BuildersTableFinder.java  # POI-based table lookup
 │   │   ├── village/
+│   │   │   ├── ConstructionOrchestrator.java # Coordinates dawn construction across villages
 │   │   │   ├── VillageData.java          # Per-village state (plan + inventory)
 │   │   │   ├── VillageDataManager.java   # Village lifecycle and construction
 │   │   │   ├── VillageDataState.java     # PersistentState wrapper
 │   │   │   └── VillageNeedsAnalyzer.java # Scans village to prioritize needs
 │   │   └── world/
-│   │       ├── BuildersTableFeature.java # Auto-spawns tables in villages
-│   │       └── VillagePoolInjector.java  # Injects workshops into village gen pools
+│   │       └── BuildersTableFeature.java # Auto-spawns tables in villages
 │   └── resources/
 │       ├── fabric.mod.json
 │       ├── assets/village-builder/       # Client resources (textures, lang, models)
@@ -54,32 +55,46 @@ village-builder/
 ## Prerequisites
 
 - **JDK 21** or later
-- Gradle wrapper is included — no separate Gradle install needed
+- Gradle wrapper is included; no separate Gradle install needed
 
 ## Structure Type Hierarchy
 
 Three types represent structure metadata at different levels:
 
-- **`StructureType`** — Enum with three entries: `BUILDERS_WORKSHOP`, `CHRISTMAS_TREE`, `PUMPKIN_FARM`. The safety net fallback. Contains blueprint dimensions, material requirements, and display names. Used by `BuildingManager` for hardcoded building placement.
-- **`StructureEntry`** — The canonical runtime representation. A record that wraps any structure source (discovered from vanilla NBT, mod-registered via API, or converted from a `StructureType` fallback). Carries: ID, display name, need category, material requirements, biome preferences, clearance size, and source tag.
-- **`StructurePlan`** — What gets assigned to a village. Wraps either a `StructureEntry` or a `StructureType` and provides a unified interface for the village data system. The plan is what appears in the GUI, drives material requirements, and triggers construction.
+- **`StructureType`**: Enum with three entries: `BUILDERS_WORKSHOP`, `CHRISTMAS_TREE`, `PUMPKIN_FARM`. The safety net fallback. Contains blueprint dimensions, material requirements, and display names. Used by `BuildingManager` for hardcoded building placement.
+- **`StructureEntry`**: The canonical runtime representation. A record that wraps any structure source (discovered from vanilla NBT, mod-registered via API, or converted from a `StructureType` fallback). Carries: ID, display name, need category, material requirements, biome preferences, clearance size, and source tag.
+- **`StructurePlan`**: What gets assigned to a village. Wraps either a `StructureEntry` or a `StructureType` and provides a unified interface for the village data system. The plan is what appears in the GUI, drives material requirements, and triggers construction.
 
 **Flow:** `StructureAnalyzer` produces `StructureEntry` records → `StructureRegistry` stores them → `VillageNeedsAnalyzer` queries the registry and wraps results as `StructurePlan` → `VillageData` holds the active plan → `VillageDataManager` resolves back to entry/type for construction.
+
+## Structure Discovery
+
+The registry is populated at server startup from three sources: structures **discovered** from vanilla village NBT templates, structures **registered by other mods** via `VillageBuilderAPI`, and the hardcoded `StructureType` **fallbacks** (used only when no discovered or registered structure matches a need+biome query).
+
+On world load:
+1. `Main` clears and repopulates the registry
+2. `registerBuildersWorkshops()` adds per-biome Builder's Workshop entries
+3. `StructureAnalyzer.discoverModStructures()` iterates known vanilla village pool paths per biome
+4. For each template path, the analyzer loads the NBT, counts blocks via `MaterialMapping` (stone variants → cobblestone, etc.), rounds to clean stacks, classifies need (beds → housing, crops → food, workstations → profession), and registers the entry
+5. Discovered entries override fallbacks with matching IDs
+6. `runReloadCallbacks()` re-registers any mod-registered structures
+
+Biome keys are simplified categories (`plains`, `taiga`, `desert`, `savanna`, `snowy`); discovered structures are tagged with their source biome, fallbacks match everywhere. `village-builder.accesswidener` widens `StructureTemplate.blockInfoLists` for the block analysis.
 
 ## Seasonal Structures
 
 Two structures are registered based on real-world date, gated at the registry query level:
 
-- **Pumpkin Patch** (October) — 9×9 irrigated farm with pumpkins, a decorative pile, and a scarecrow armor stand. Satisfies FOOD need. Generated by `create_pumpkin_farm.py`.
-- **Village Christmas Tree** (November/December) — 11×13 decorated spruce with glowstone ornaments, gold block star, and four loot chests (End City, Bastion, Buried Treasure, Ancient City). Satisfies PROSPERITY need. Generated by `create_christmas_tree.py`.
-- **April Fools** (April 1) — 25% chance any building is placed upside down. Structures with entities are excluded from the flip.
+- **Pumpkin Patch** (October): 9x9 irrigated farm with pumpkins, a decorative pile, and a scarecrow armor stand. Satisfies FOOD need. Generated by `create_pumpkin_farm.py`.
+- **Village Christmas Tree** (November/December): 11x13 decorated spruce with glowstone ornaments, gold block star, and four loot chests (End City, Bastion, Buried Treasure, Ancient City). Satisfies PROSPERITY need. Generated by `create_christmas_tree.py`.
+- **April Fools** (April 1): 25% chance any building is placed upside down. Structures with entities are excluded from the flip.
 
 Seasonal structures are always registered in the registry (so saved plans survive month transitions), but only appear in query results during their active months. See `StructureRegistry.registerSeasonalStructures()` and `seasonalMonths`.
 
 ## Key Components
 
 ### 1. Builder Villager Profession
-**Location**: `Main.java` — search for `BUILDER = Registry.register`
+**Location**: `Main.java`: search for `BUILDER = Registry.register`
 
 - Uses Builder's Table as workstation (POI)
 - 5 trade levels with randomized material purchases, supply trades, and structure plans
@@ -105,7 +120,7 @@ Scans village area to determine what to build next:
 **Location**: `village/VillageDataManager.java` + `building/BuildingManager.java`
 
 - Each village has a shared inventory and a current plan (StructurePlan backed by StructureEntry or StructureType fallback)
-- Materials tracked directly in inventory — no hidden counters
+- Materials tracked directly in inventory, no hidden counters
 - Completion percentage is weighted equally per material type (100% cobblestone + 0% iron = 50% complete)
 - When all materials are gathered and a Builder is present, construction triggers at dawn
 - BuildingManager tries .nbt templates first, falls back to hardcoded blueprint for Builder's Workshop
@@ -132,9 +147,9 @@ Builders gather materials on their own each dawn:
 
 #### Plan Assignment
 Plans are set via three paths:
-1. **Auto-assignment on village creation** — `VillageDataManager.getVillageData()` assigns a plan from `VillageNeedsAnalyzer` when a new village is first created
-2. **Plan trades** — `VillagerEntityMixin.onTradeComplete()` sets the plan when a player buys a plan paper from a Builder
-3. **Auto-assignment after construction** — `buildAndGatherVillagers()` assigns a new plan after each completed build
+1. **Auto-assignment on village creation**: `VillageDataManager.getVillageData()` assigns a plan from `VillageNeedsAnalyzer` when a new village is first created
+2. **Plan trades**: `VillagerEntityMixin.onTradeComplete()` sets the plan when a player buys a plan paper from a Builder
+3. **Auto-assignment after construction**: `buildAndGatherVillagers()` assigns a new plan after each completed build
 
 #### Key Constants
 | Constant | Value | Purpose |
@@ -152,18 +167,18 @@ Plans are set via three paths:
 
 After placing a structure, `BuildingManager.connectToNearestPath()` searches for the nearest `DIRT_PATH` block within 32 blocks and lays a dirt path from the building edge to it. If no existing path is found, it connects the building to the village center (Builder's Table position) to seed the path network for new villages.
 
-Paths are only placed on dirt, grass, or coarse dirt — villages on sand, stone, or other terrain won't generate paths automatically.
+Paths are only placed on dirt, grass, or coarse dirt; villages on sand, stone, or other terrain won't generate paths automatically.
 
 ### 5. API for Integration
 **Location**: `api/VillageBuilderAPI.java`
 
 Public methods:
-- `processDonatedMaterials(ServerLevel, BlockPos, List<ItemStack>)` — accepts building materials, returns `DonationResult` with accepted/rejected/overflow
-- `isBuildingMaterial(Item)` — check if item is in the material pool
-- `isNeededForConstruction(ServerLevel, BlockPos, Item)` — check if item is needed for current plan
-- `getConstructionStatus(ServerLevel, BlockPos)` — get current construction status text (null if no plan)
-- `registerStructure(...)` / `registerStructurePersistent(...)` / `registerTemplatePersistent(...)` — register structures into the build pool; persistent variants survive world reloads via reload callbacks
-- `onConstructionComplete(ConstructionListener)` / `onPlanChanged(PlanChangedListener)` — event hooks
+- `processDonatedMaterials(ServerLevel, BlockPos, List<ItemStack>)`: accepts building materials, returns `DonationResult` with accepted/rejected/overflow
+- `isBuildingMaterial(Item)`: check if item is in the material pool
+- `isNeededForConstruction(ServerLevel, BlockPos, Item)`: check if item is needed for current plan
+- `getConstructionStatus(ServerLevel, BlockPos)`: get current construction status text (null if no plan)
+- `registerStructure(...)` / `registerStructurePersistent(...)` / `registerTemplatePersistent(...)`: register structures into the build pool; persistent variants survive world reloads via reload callbacks
+- `onConstructionComplete(ConstructionListener)` / `onPlanChanged(PlanChangedListener)`: event hooks
 
 ### 6. Village Data Persistence
 **Location**: `village/VillageDataState.java` + `village/VillageDataManager.java`
@@ -209,10 +224,10 @@ Output: `build/libs/village-builder-1.0.0.jar`
 
 Python scripts in the project root generate `.nbt` structure templates:
 
-- `create_textures.py` — Villager profession and item textures
-- `create_workshops.py` — 5 biome-specific Builder's Workshop templates
-- `create_christmas_tree.py` — Christmas tree with loot chests
-- `create_pumpkin_farm.py` — Pumpkin patch with scarecrow entity
+- `create_textures.py`: Villager profession and item textures
+- `create_workshops.py`: 5 biome-specific Builder's Workshop templates
+- `create_christmas_tree.py`: Christmas tree with loot chests
+- `create_pumpkin_farm.py`: Pumpkin patch with scarecrow entity
 
 To regenerate after modifying:
 ```
@@ -221,7 +236,7 @@ python3 create_christmas_tree.py
 python3 create_pumpkin_farm.py
 ```
 
-Output goes to `src/main/resources/data/village-builder/structure/`. The generated `.nbt` files are committed to the repo — the scripts are dev tools, not build dependencies.
+Output goes to `src/main/resources/data/village-builder/structure/`. The generated `.nbt` files are committed to the repo; the scripts are dev tools, not build dependencies.
 
 ## Quick-Start Testing
 
@@ -240,7 +255,7 @@ Useful commands for rapid testing in a singleplayer creative world:
 # Fast-forward to dawn (triggers construction + gathering)
 /time set 23000
 
-# Fill inventory quickly — give yourself stacks of common materials
+# Fill inventory quickly: give yourself stacks of common materials
 /give @s cobblestone 64
 /give @s oak_log 64
 /give @s iron_ingot 16
@@ -253,7 +268,7 @@ Seasonal structures are gated by system date. To test outside their active month
 ## Testing Checklist
 
 - [ ] Place Builder's Table block
-- [ ] Right-click to open GUI — see shared village inventory
+- [ ] Right-click to open GUI, see shared village inventory
 - [ ] Spawn builder villager near table
 - [ ] Verify villager claims Builder's Table as workstation
 - [ ] Test material purchase trades (give materials → get emeralds)
@@ -266,10 +281,7 @@ Seasonal structures are gated by system date. To test outside their active month
 
 ## Compatibility
 
-- Minecraft: 26.1.2
-- Fabric Loader: 0.19.2+
-- Fabric API: 0.150.0+26.1.2
-- Java: 25+
+Targets the Minecraft, Fabric Loader, Fabric API, and Java versions declared in this mod's `gradle.properties` and `fabric.mod.json`: check there for the exact currently-supported versions.
 
 ## Builder-Count Gating
 
@@ -283,22 +295,22 @@ When the village's top need has structures but they all require more builders th
 ## Advancements
 
 The mod includes 4 player-facing advancements (advancement chain):
-- **Village Patron** — Obtain a Builder's Table
-- **Breaking Ground** — Witness a village's first construction
-- **It Takes a Village** — Witness 5 constructions
-- **Growing Community** / **Master Patron** — Witness 10 constructions
+- **Village Patron**: Obtain a Builder's Table
+- **Breaking Ground**: Witness a village's first construction
+- **It Takes a Village**: Witness 5 constructions
+- **Growing Community** / **Master Patron**: Witness 10 constructions
 
 ## Server Commands
 
 All commands require operator (permission level 2 / GAMEMASTERS):
-- `/villagebuilder status` — Show nearby village info: current plan, completion percentage, built structure count, gathering index, and per-material progress
-- `/villagebuilder list` — Show the total number of tracked villages across the server
-- `/villagebuilder reassign` — Clear the current plan for the nearest village and force a new plan assignment on the next tick (based on fresh needs analysis)
+- `/villagebuilder status`: Show nearby village info: current plan, completion percentage, built structure count, gathering index, and per-material progress
+- `/villagebuilder list`: Show the total number of tracked villages across the server
+- `/villagebuilder reassign`: Clear the current plan for the nearest village and force a new plan assignment on the next tick (based on fresh needs analysis)
 
 ## Known Limitations & Open Questions
 
 - **Hardcoded vanilla template paths**: `StructureAnalyzer.getVanillaVillagePools()` lists ~140 template paths manually. If Mojang adds/renames structures, the list goes stale silently. Dynamic pool registry scanning would fix this. If discovery finds zero structures, an ERROR-level log is emitted.
-- **Modded biomes**: Unmapped biomes fall through to "plains". Badlands map to "desert". Bamboo/jungle map to "plains" (not "savanna"). All other unlisted biomes (Terralith, BYG, etc.) default to "plains" — no crash, just no biome-specific structure preference.
+- **Modded biomes**: Unmapped biomes fall through to "plains". Badlands map to "desert". Bamboo/jungle map to "plains" (not "savanna"). All other unlisted biomes (Terralith, BYG, etc.) default to "plains": no crash, just no biome-specific structure preference.
 - **Defense structures**: Defense classification (walls, towers) relies on block composition heuristics. Iron bars and cobblestone walls trigger it, but novel defense blocks from mods won't.
 - **Material caching**: Discovered material requirements are recomputed every server start from NBT templates. Caching to disk would speed startup for large modpacks.
 - **Chunk-loading dependency**: Villages only grow when their chunks are loaded. Autonomous gathering and construction require a player nearby. This is inherent to vanilla's chunk system.
@@ -306,10 +318,10 @@ All commands require operator (permission level 2 / GAMEMASTERS):
 
 ## Optional Mod Integration
 
-- **village-quests**: Full integration via `BuilderQuestRegistration` — three quest types registered under the `"builder"` profession via `QuestRegistry.registerProfessionQuest`:
-  - **BuilderFetchQuest** (FETCH, +12 rep) — builder asks player to gather materials needed for the current construction plan; on completion, items go directly into the village stockpile.
-  - **SurveyBuildSiteQuest** (VILLAGE_DEVELOPMENT, +10 rep) — builder asks player to visit a candidate build location; on completion, player receives a Builder's Flag to stake the site.
-  - **RushSuppliesQuest** (TIME_SENSITIVE, +20 rep) — urgent material delivery when village is ≥60% complete; 5-minute deadline, higher reward. Offered at reputation ≥25 when nearly ready to build.
+- **village-quests**: Full integration via `BuilderQuestRegistration`: three quest types registered under the `"builder"` profession via `QuestRegistry.registerProfessionQuest`:
+  - **BuilderFetchQuest** (FETCH, +12 rep): builder asks player to gather materials needed for the current construction plan; on completion, items go directly into the village stockpile.
+  - **SurveyBuildSiteQuest** (VILLAGE_DEVELOPMENT, +10 rep): builder asks player to visit a candidate build location; on completion, player receives a Builder's Flag to stake the site.
+  - **RushSuppliesQuest** (TIME_SENSITIVE, +20 rep): urgent material delivery when village is ≥60% complete; 5-minute deadline, higher reward. Offered at reputation ≥25 when nearly ready to build.
   - Quest selection is weighted by material shortage (most-needed item prioritized). Survey quests surface when all materials are gathered (reputation ≥25). Village-quests must be installed for any of this to activate; `village-builder` compileOnly-depends on its JAR (`../village-quests/build/libs/village-quests-1.0.0.jar`).
   - Village names from village-quests appear in build announcements. Loads conditionally when `village-quests-justfatlard` is present.
-- **village-mail**: Full integration via `VillageMailIntegration` + `BuilderMailRegistration`. Registers post office and public mailbox structures into the building pool. Sends mail notifications to nearby mailbox-owning players when construction completes (first build, then every 3rd), milestone reflections at 5/10/15/20 builds, and personal notes to plan patrons (25% chance). Plan assignments intentionally do NOT trigger mail — the village doesn't chase you down with a shopping list. Uses reflection into `MailApi` — no hard dependency. The donation API (`VillageBuilderAPI.processDonatedMaterials`) remains available for village-mail to route materials into village inventories.
+- **village-mail**: Full integration via `VillageMailIntegration` + `BuilderMailRegistration`. Registers post office and public mailbox structures into the building pool. Sends mail notifications to nearby mailbox-owning players when construction completes (first build, then every 3rd), milestone reflections at 5/10/15/20 builds, and personal notes to plan patrons (25% chance). Plan assignments intentionally do NOT trigger mail; the village doesn't chase you down with a shopping list. Uses reflection into `MailApi`: no hard dependency. The donation API (`VillageBuilderAPI.processDonatedMaterials`) remains available for village-mail to route materials into village inventories.

@@ -28,7 +28,7 @@ public class VillageMailIntegration {
          try {
             sendMessageMethod.invoke(null, server, recipientUuid, senderName, body);
          } catch (Exception var5) {
-            LOGGER.warn("Failed to send mail — village-mail API may have changed: {}", var5.getMessage());
+            LOGGER.warn("Failed to send mail; village-mail API may have changed: {}", var5.getMessage());
          }
       }
    }
@@ -38,7 +38,7 @@ public class VillageMailIntegration {
          try {
             return hasMailboxMethod.invoke(null, server, playerUuid) instanceof Boolean b && b;
          } catch (Exception var4) {
-            LOGGER.warn("Failed to check mailbox — village-mail API may have changed: {}", var4.getMessage());
+            LOGGER.warn("Failed to check mailbox; village-mail API may have changed: {}", var4.getMessage());
             return false;
          }
       } else {
@@ -68,7 +68,7 @@ public class VillageMailIntegration {
                }
             }
          } catch (Exception var15) {
-            LOGGER.warn("Failed to query mailbox locations — village-mail API may have changed: {}", var15.getMessage());
+            LOGGER.warn("Failed to query mailbox locations; village-mail API may have changed: {}", var15.getMessage());
          }
 
          return result;
@@ -94,7 +94,7 @@ public class VillageMailIntegration {
             loaded = true;
             LOGGER.info("village-mail integration loaded");
          } catch (ClassNotFoundException var4) {
-            LOGGER.warn("village-mail mod is installed but API classes not found — integration disabled: {}", var4.getMessage());
+            LOGGER.warn("village-mail mod is installed but API classes not found; integration disabled: {}", var4.getMessage());
          } catch (Exception var5) {
             LOGGER.warn("village-mail mod detected but API unavailable: {}", var5.getMessage());
          }

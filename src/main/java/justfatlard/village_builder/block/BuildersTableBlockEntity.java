@@ -29,7 +29,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 
 public class BuildersTableBlockEntity extends BlockEntity {
-    // Screen type constant — used to register action/slot handlers in Main
+    // Screen type constant, used to register action/slot handlers in Main
     public static final String SCREEN_TYPE = "village-builder:builders_table";
 
     // Layout constants
@@ -62,10 +62,10 @@ public class BuildersTableBlockEntity extends BlockEntity {
                 player,
                 screenDef,
                 villageData.getInventory(),
-                Set.of() // no read-only slots — players may interact with all 27 slots
+                Set.of() // no read-only slots; players may interact with all 27 slots
             );
         } else {
-            // No village data yet — open a display-only info screen
+            // No village data yet: open a display-only info screen
             PandoricalApi.screens().open(player, screenDef);
         }
     }
@@ -273,7 +273,7 @@ public class BuildersTableBlockEntity extends BlockEntity {
         PandoricalApi.screens().onSlotChange(SCREEN_TYPE, (player, slotIndex, stack) -> {
             if (slotIndex >= VILLAGE_SLOT_COUNT) return; // only village slots
 
-            // Enforce material filter — reject non-building-materials placed into village slots
+            // Enforce material filter: reject non-building-materials placed into village slots
             if (!stack.isEmpty() && !VillageBuilderAPI.isBuildingMaterial(stack.getItem())) {
                 // Pandorical runs this callback after the move is applied on the server container.
                 // We need to revert the stack placement by clearing the slot and returning to player.

@@ -153,7 +153,7 @@ public class VillageDataManager {
    public VillageData getVillageData(ServerLevel world, BlockPos pos) {
       BlockPos tablePos = BuildersTableFinder.findNearestBuildersTable(world, pos, VILLAGE_RADIUS);
       if (tablePos == null) {
-         LOGGER.debug("No builder's table found near {} — cannot resolve village", pos);
+         LOGGER.debug("No builder's table found near {}; cannot resolve village", pos);
          return null;
       }
       return this.resolveVillageData(world, tablePos);
@@ -209,7 +209,7 @@ public class VillageDataManager {
    public void addMaterialToVillage(ServerLevel world, BlockPos tablePos, Item item, int count) {
       VillageData villageData = this.resolveVillageData(world, tablePos);
       if (villageData == null) {
-         LOGGER.warn("Cannot add materials — no village found near {}", tablePos);
+         LOGGER.warn("Cannot add materials; no village found near {}", tablePos);
          return;
       }
 
@@ -246,7 +246,7 @@ public class VillageDataManager {
    public void setVillagePlan(ServerLevel world, BlockPos tablePos, StructurePlan plan, UUID patronUuid, String patronName) {
       VillageData villageData = this.resolveVillageData(world, tablePos);
       if (villageData == null) {
-         LOGGER.warn("Cannot set plan — no village found near {}", tablePos);
+         LOGGER.warn("Cannot set plan; no village found near {}", tablePos);
          return;
       }
       villageData.setCurrentPlan(plan);

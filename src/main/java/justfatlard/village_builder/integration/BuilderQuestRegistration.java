@@ -18,7 +18,7 @@ public class BuilderQuestRegistration {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
 
    public static void register() {
-      // professionName is the path of the Identifier — "village-builder:builder" → "builder"
+      // professionName is the path of the Identifier: "village-builder:builder" → "builder"
       QuestRegistry.registerProfessionQuest("builder", (villager, villagerName, reputation, random) -> {
          if (!(villager.level() instanceof ServerLevel world)) return null;
 
@@ -36,7 +36,7 @@ public class BuilderQuestRegistration {
             .toList();
 
          if (needed.isEmpty()) {
-            // Materials are gathered — survey quest gives the player a meaningful thing to do
+            // Materials are gathered, so the survey quest gives the player a meaningful thing to do
             if (reputation >= 25) {
                BlockPos surveyTarget = pickSurveyTarget(world, tablePos, random);
                if (surveyTarget != null) {

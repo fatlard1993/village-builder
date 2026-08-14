@@ -1,6 +1,5 @@
 package justfatlard.village_builder.block;
 
-import com.mojang.serialization.MapCodec;
 import justfatlard.village_builder.Main;
 import justfatlard.village_builder.village.VillageData;
 import net.minecraft.core.BlockPos;
@@ -20,15 +19,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 
 public class BuildersTableBlock extends Block implements EntityBlock {
-   public static final MapCodec<BuildersTableBlock> CODEC = simpleCodec(p -> new BuildersTableBlock());
-
    public BuildersTableBlock() {
       super(Properties.of().setId(Main.BUILDERS_TABLE_BLOCK_KEY).strength(2.5F).sound(SoundType.WOOD));
-   }
-
-   @Override
-   protected MapCodec<? extends Block> codec() {
-      return CODEC;
    }
 
    @Override
