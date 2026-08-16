@@ -70,6 +70,8 @@ Install alongside its declared dependencies (see `fabric.mod.json`). Targets the
 
 ## Building from Source
 
+Village Builder builds against Pandorical's live source, not a published artifact: `settings.gradle` includes `../pandorical`. Check both out side by side or the build fails before it starts.
+
 ```bash
 ./gradlew build
 ```
