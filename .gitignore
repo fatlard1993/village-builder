@@ -36,3 +36,5 @@ remappedSrc/
 
 # minecraft
 .cache/
+
+.claude/

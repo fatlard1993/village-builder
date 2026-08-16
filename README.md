@@ -66,7 +66,7 @@ Village Builder uses Pandorical's `screens()` API to build and drive the Builder
 
 ## Installation
 
-Install alongside its declared dependencies (see `fabric.mod.json`). Targets the Minecraft, Fabric Loader, and Fabric API versions declared in this mod's `gradle.properties`; check there for the exact currently-supported version.
+Install server-side alongside its declared dependencies (see `fabric.mod.json`); connecting clients need only Pandorical. Version targets live in `gradle.properties` (Minecraft, loader, Fabric API) and `fabric.mod.json` (Java).
 
 ## Building from Source
 
@@ -102,7 +102,7 @@ VillageBuilderAPI.registerStructurePersistent(
 
 ## License
 
-MIT License; see the LICENSE file for details.
+MIT, see [LICENSE](LICENSE).
 
 ## Credits
 
