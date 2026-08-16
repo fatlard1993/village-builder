@@ -2,6 +2,9 @@ package justfatlard.village_builder;
 
 import com.google.common.collect.ImmutableSet;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import justfatlard.pandorical.api.BlockRegistration;
+import justfatlard.pandorical.api.ItemRegistration;
+import justfatlard.pandorical.api.PandoricalApi;
 import justfatlard.village_builder.block.BuildersTableBlock;
 import justfatlard.village_builder.block.BuildersTableBlockEntity;
 import justfatlard.village_builder.building.BuildingManager;
@@ -79,6 +82,19 @@ public class Main implements ModInitializer {
    public static final StructureRegistry STRUCTURE_REGISTRY = new StructureRegistry();
 
    public void onInitialize() {
+      // Mirror the block and items into Pandorical's content registry: clients build
+      // their copy from these declarations, and a block that is only in vanilla's
+      // registries leaves them guessing at it.
+      PandoricalApi.content().registerBlock(MOD_ID + ":builders_table", new BlockRegistration()
+         .baseBlock("minecraft:oak_planks")
+         .model(MOD_ID + ":block/builders_table"));
+      PandoricalApi.content().registerItem(MOD_ID + ":builders_table", new ItemRegistration()
+         .model(MOD_ID + ":block/builders_table"));
+      PandoricalApi.content().registerItem(MOD_ID + ":builders_flag", new ItemRegistration()
+         .model(MOD_ID + ":item/builders_flag")
+         .maxStackSize(1));
+      PandoricalApi.content().registerModAssets(MOD_ID);
+
       Registry.register(BuiltInRegistries.BLOCK, BUILDERS_TABLE_ID, BUILDERS_TABLE_BLOCK);
       BUILDERS_TABLE_BLOCK_ENTITY = Registry.register(
          BuiltInRegistries.BLOCK_ENTITY_TYPE,
