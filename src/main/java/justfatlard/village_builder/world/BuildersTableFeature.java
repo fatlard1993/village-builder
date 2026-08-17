@@ -39,6 +39,7 @@ public class BuildersTableFeature {
    public static void clearForWorld(ResourceKey<Level> worldKey) {
       evaluatedBells.remove(worldKey);
       queriedZones.remove(worldKey);
+      pendingBells.remove(worldKey);
    }
 
    public static void trySpawnInVillage(ServerLevel world, BlockPos chunkPos) {
@@ -97,12 +98,11 @@ public class BuildersTableFeature {
          iter.next();
          iter.remove();
       }
-      worldBells.add(bellPos.get());
-
-      LOGGER.info("Found bell at {}, checking for table", bellPos.get());
+      LOGGER.info("Found bell at {}, queued for a table", bellPos.get());
 
       RandomSource random = world.getRandom();
       if (random.nextInt(10) > 8) {
+         worldBells.add(bellPos.get());
          LOGGER.info("Bell at {}: skipped by chance roll (10%% miss)", bellPos.get());
          return;
       }
@@ -111,19 +111,69 @@ public class BuildersTableFeature {
          poi -> poi.is(Main.BUILDERS_TABLE_POI_KEY), bellPos.get(), 64, Occupancy.ANY
       );
       if (existingTable.isPresent()) {
-         LOGGER.info("Bell at {} already has a Builder's Table at {}", bellPos.get(), existingTable.get());
+         worldBells.add(bellPos.get());
+         LOGGER.info("Bell at {} already has a table at {}", bellPos.get(), existingTable.get());
          return;
       }
 
-      BlockPos tablePos = findSuitableLocation(world, bellPos.get(), random);
-      if (tablePos == null) {
-         LOGGER.warn("Bell at {}: no suitable location found in 40 attempts", bellPos.get());
-         return;
-      }
-
-      world.setBlockAndUpdate(tablePos, Main.BUILDERS_TABLE_BLOCK.defaultBlockState());
-      LOGGER.info("Spawned Builder's Table at {} near bell {}", tablePos, bellPos.get());
+      // Queued rather than placed here. This runs off a chunk-load callback, and
+      // the bell can be 48 blocks from the chunk that triggered it, so the ground
+      // around it is usually still unloaded: every sampled position lands in a
+      // chunk getChunkNow cannot see and the whole attempt burns without placing
+      // anything. Retrying over the following ticks lets the village load first.
+      pendingBells.computeIfAbsent(world.dimension(), k -> new HashMap<>())
+         .putIfAbsent(bellPos.get(), PLACEMENT_ATTEMPTS);
    }
+
+   /**
+    * Bells still owed a table, with attempts remaining.
+    *
+    * <p>A bell is only retired into {@code evaluatedBells} once it has a table or
+    * has run out of attempts. Retiring it up front, as this used to, gave a bell
+    * exactly one try at the worst possible moment and then never looked again:
+    * seven bells found on this server in one day, seven failures, no table.
+    */
+   private static final Map<ResourceKey<Level>, Map<BlockPos, Integer>> pendingBells = new HashMap<>();
+
+   private static final int PLACEMENT_ATTEMPTS = 20;
+   private static final int RETRY_INTERVAL_TICKS = 40;
+
+   /** Retries queued bells once the ground under them exists. */
+   public static void tick(ServerLevel world) {
+      if (world.getGameTime() % RETRY_INTERVAL_TICKS != 0) return;
+
+      Map<BlockPos, Integer> pending = pendingBells.get(world.dimension());
+      if (pending == null || pending.isEmpty()) return;
+
+      Set<BlockPos> worldBells = evaluatedBells.computeIfAbsent(world.dimension(), k -> new LinkedHashSet<>());
+      Iterator<Map.Entry<BlockPos, Integer>> it = pending.entrySet().iterator();
+
+      while (it.hasNext()) {
+         Map.Entry<BlockPos, Integer> entry = it.next();
+         BlockPos bell = entry.getKey();
+
+         BlockPos tablePos = findSuitableLocation(world, bell, world.getRandom());
+         if (tablePos != null) {
+            world.setBlockAndUpdate(tablePos, Main.BUILDERS_TABLE_BLOCK.defaultBlockState());
+            LOGGER.info("Spawned a table at {} near bell {}", tablePos, bell);
+            worldBells.add(bell);
+            it.remove();
+            continue;
+         }
+
+         int left = entry.getValue() - 1;
+         if (left <= 0) {
+            LOGGER.warn("Bell at {}: gave up after {} attempts", bell, PLACEMENT_ATTEMPTS);
+            worldBells.add(bell);
+            it.remove();
+         } else {
+            entry.setValue(left);
+         }
+      }
+   }
+
+   /** How far above or below the bell a table may sit, so it stays out of the rooftops. */
+   private static final int MAX_HEIGHT_FROM_BELL = 4;
 
    private static BlockPos findSuitableLocation(ServerLevel world, BlockPos center, RandomSource random) {
       for (int attempt = 0; attempt < 40; attempt++) {
@@ -135,6 +185,11 @@ public class BuildersTableFeature {
          LevelChunk chunk = world.getChunkSource().getChunkNow(x >> 4, z >> 4);
          if (chunk == null) continue;
          int y = chunk.getHeight(Types.MOTION_BLOCKING_NO_LEAVES, x, z) + 1;
+         // The heightmap counts buildings, so without this the table lands on
+         // whatever roof the sample happened to hit. The bell stands in the
+         // square, so its height is what street level means here.
+         if (Math.abs(y - center.getY()) > MAX_HEIGHT_FROM_BELL) continue;
+
          BlockPos groundPos = new BlockPos(x, y, z);
          if (isLocationSuitable(world, groundPos)) {
             AABB searchBox = new AABB(groundPos).inflate(10.0);

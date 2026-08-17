@@ -146,8 +146,9 @@ public class Main implements ModInitializer {
           BuildersTableFeature.trySpawnInVillage(world, chunk.getPos().getWorldPosition()));
 
       ServerTickEvents.END_LEVEL_TICK.register(world -> {
-         if (world instanceof ServerLevel && world.dimension() == Level.OVERWORLD) {
+         if (world instanceof ServerLevel serverWorld && world.dimension() == Level.OVERWORLD) {
             VILLAGE_DATA_MANAGER.tick(world);
+            BuildersTableFeature.tick(serverWorld);
          }
       });
       CreativeModeTab builderGroup = FabricCreativeModeTab.builder()
