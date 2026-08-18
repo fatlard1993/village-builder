@@ -1,7 +1,9 @@
 package justfatlard.village_builder.api;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import justfatlard.village_builder.BuilderTrades;
 import justfatlard.village_builder.Main;
@@ -24,6 +26,12 @@ public class VillageBuilderAPI {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
    private static final List<VillageBuilderAPI.ConstructionListener> constructionListeners = new ArrayList<>();
    private static final List<VillageBuilderAPI.PlanChangedListener> planChangedListeners = new ArrayList<>();
+   /**
+    * Counters that report how many of a limit group a village already has, from sources Village
+    * Builder did not build. Registered once at mod init and deliberately not cleared with the
+    * listeners: a world reload does not re-run another mod's initializer.
+    */
+   private static final Map<String, VillageBuilderAPI.LimitGroupSeeder> limitGroupSeeders = new HashMap<>();
    public static final String BIOME_PLAINS = "plains";
    public static final String BIOME_TAIGA = "taiga";
    public static final String BIOME_DESERT = "desert";
@@ -41,6 +49,53 @@ public class VillageBuilderAPI {
 
    public static void onPlanChanged(VillageBuilderAPI.PlanChangedListener listener) {
       planChangedListeners.add(listener);
+   }
+
+   /**
+    * Teach Village Builder to recognise structures of a limit group that it did not build itself.
+    *
+    * <p>Per-village limits count what the builder has completed. A structure that was already in
+    * the world when the village was first surveyed, placed by worldgen or by hand, is invisible to
+    * that count, so a village could hold one of yours and still be offered another. Register a
+    * seeder and it is asked once, when the village's data is first created, how many of the group
+    * are already present; the answer is folded into the village's tally before its first plan is
+    * chosen.
+    *
+    * <p>Called on the server thread during village discovery, so keep it cheap: a structure lookup
+    * or a short block scan, not a world sweep. Register from your mod's initializer.
+    */
+   public static void registerLimitGroupSeeder(String limitGroup, VillageBuilderAPI.LimitGroupSeeder seeder) {
+      if (limitGroup == null || limitGroup.isBlank() || seeder == null) {
+         return;
+      }
+      limitGroupSeeders.put(limitGroup, seeder);
+      LOGGER.info("Registered limit group seeder for '{}'", limitGroup);
+   }
+
+   /**
+    * Ask every registered seeder what this village already has, and record it.
+    *
+    * <p>Called by Village Builder when a village's data is created. A seeder that throws is logged
+    * and skipped rather than aborting village discovery.
+    */
+   public static void seedLimitGroups(ServerLevel world, BlockPos villageCenter, VillageData data) {
+      if (limitGroupSeeders.isEmpty()) {
+         return;
+      }
+
+      for (Map.Entry<String, VillageBuilderAPI.LimitGroupSeeder> entry : limitGroupSeeders.entrySet()) {
+         try {
+            int existing = entry.getValue().countExisting(world, villageCenter);
+            if (existing > 0) {
+               data.seedLimitGroup(entry.getKey(), existing);
+               LOGGER.info("Village at {} already has {} of limit group '{}'",
+                  villageCenter, existing, entry.getKey());
+            }
+         } catch (Exception e) {
+            LOGGER.warn("Limit group seeder for '{}' failed at {}: {}",
+               entry.getKey(), villageCenter, e.getMessage());
+         }
+      }
    }
 
    public static void fireConstructionComplete(ServerLevel world, BlockPos villageCenter, String structureName, BlockPos buildPos) {
@@ -185,6 +240,42 @@ public class VillageBuilderAPI {
       registerStructurePersistent(id, displayName, Set.of(need), requirements, biomePreferences, clearanceSize);
    }
 
+   /**
+    * Register a structure that a village may only build a limited number of times.
+    *
+    * <p>Entries sharing a {@code limitGroup} count against one another, so a mod offering the same
+    * building in several sizes can cap the whole family at one per village instead of one of each.
+    * Pass the mod's own namespaced string as the group. A {@code maxPerVillage} of zero or less is
+    * unlimited, which is what the plain overloads give you.
+    *
+    * <p>The count is per village and persists with the village's saved data; it is not reset by a
+    * structure being destroyed, so a village that loses its keep does not immediately rebuild one.
+    */
+   public static void registerStructurePersistent(
+      Identifier id,
+      String displayName,
+      Set<VillageNeedsAnalyzer.VillageNeed> needs,
+      List<StructureType.MaterialRequirement> requirements,
+      Set<String> biomePreferences,
+      int clearanceSize,
+      String limitGroup,
+      int maxPerVillage
+   ) {
+      Runnable registration = () -> {
+         StructureEntry entry = new StructureEntry(
+            id, displayName, needs, requirements, biomePreferences, clearanceSize,
+            StructureEntry.Source.MOD_REGISTERED, limitGroup, maxPerVillage
+         );
+         Main.STRUCTURE_REGISTRY.register(entry);
+         LOGGER.info("Registered mod structure: {} ({}), limit {} per village in group '{}'",
+            id, needs, maxPerVillage, entry.limitGroup());
+      };
+      Main.STRUCTURE_REGISTRY.addReloadCallback(registration);
+      if (Main.STRUCTURE_REGISTRY.isInitialized()) {
+         registration.run();
+      }
+   }
+
    public static void registerTemplatePersistent(
       Identifier templateId,
       String displayName,
@@ -238,5 +329,11 @@ public class VillageBuilderAPI {
    @FunctionalInterface
    public interface PlanChangedListener {
       void onPlanChanged(ServerLevel var1, BlockPos var2, String var3);
+   }
+
+   /** Reports how many of a limit group a village already contains. */
+   @FunctionalInterface
+   public interface LimitGroupSeeder {
+      int countExisting(ServerLevel world, BlockPos villageCenter);
    }
 }

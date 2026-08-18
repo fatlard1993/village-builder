@@ -5,6 +5,15 @@ import java.util.Set;
 import justfatlard.village_builder.village.VillageNeedsAnalyzer;
 import net.minecraft.resources.Identifier;
 
+/**
+ * @param limitGroup    structures sharing a group count against one another for
+ *                      {@link #maxPerVillage}. Lets a mod register several variants of one thing
+ *                      (a castle in three sizes, say) and cap the lot at one per village rather
+ *                      than one of each. Defaults to the entry's own id, so an entry that names no
+ *                      group is only ever limited against itself.
+ * @param maxPerVillage how many of this group a single village may build. Zero or less is
+ *                      unlimited, which is the default and what every built-in structure uses.
+ */
 public record StructureEntry(
    Identifier id,
    String displayName,
@@ -12,8 +21,45 @@ public record StructureEntry(
    List<StructureType.MaterialRequirement> requirements,
    Set<String> biomePreferences,
    int clearanceSize,
-   StructureEntry.Source source
+   StructureEntry.Source source,
+   String limitGroup,
+   int maxPerVillage
 ) {
+   /** Value of {@link #maxPerVillage} meaning "as many as the village wants". */
+   public static final int UNLIMITED = 0;
+
+   /** An entry with no per-village limit. */
+   public StructureEntry(
+      Identifier id,
+      String displayName,
+      Set<VillageNeedsAnalyzer.VillageNeed> needs,
+      List<StructureType.MaterialRequirement> requirements,
+      Set<String> biomePreferences,
+      int clearanceSize,
+      StructureEntry.Source source
+   ) {
+      this(id, displayName, needs, requirements, biomePreferences, clearanceSize, source, null, UNLIMITED);
+   }
+
+   public StructureEntry {
+      if (limitGroup == null || limitGroup.isBlank()) {
+         limitGroup = id.toString();
+      }
+   }
+
+   /** Whether this entry is capped at all. */
+   public boolean hasVillageLimit() {
+      return this.maxPerVillage > UNLIMITED;
+   }
+
+   /**
+    * Whether a village that has already built {@code builtInGroup} of this entry's limit group
+    * may build another.
+    */
+   public boolean allowsAnotherInVillage(int builtInGroup) {
+      return !this.hasVillageLimit() || builtInGroup < this.maxPerVillage;
+   }
+
    public int totalMaterialCost() {
       int total = 0;
 

@@ -290,6 +290,9 @@ class ConstructionOrchestrator {
 
       this.celebrateNewBuilding(world, buildPos);
       villageData.recordBuiltStructure(buildPos, clearanceSize);
+      if (entry != null) {
+         villageData.recordLimitGroup(entry.limitGroup());
+      }
       this.relocateWorkbench(world, villageData, buildPos);
       villageData.resetPlacementFailures();
       villageData.clearCurrentPlan();

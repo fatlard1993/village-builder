@@ -198,6 +198,9 @@ public class VillageDataManager {
       }
 
       VillageData data = new VillageData(tablePos);
+      // Before the first plan is chosen, let other mods declare what this village already has, so
+      // a village that generated with someone's one-per-village structure is not offered another.
+      VillageBuilderAPI.seedLimitGroups(world, tablePos, data);
       this.assignNextPlan(world, data);
       this.villages.put(tablePos, data);
       this.markPersistentDirty();

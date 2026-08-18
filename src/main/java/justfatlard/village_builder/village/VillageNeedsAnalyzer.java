@@ -118,6 +118,10 @@ public class VillageNeedsAnalyzer {
          entries = registry.query(need);
       }
 
+      // Drop anything this village has already built to its per-village limit. Applied before the
+      // builder-count relaxation below, so a capped structure cannot come back through that path.
+      entries = this.withinVillageLimits(entries);
+
       List<StructurePlan> plans = new ArrayList<>();
 
       for (StructureEntry entry : entries) {
@@ -141,6 +145,26 @@ public class VillageNeedsAnalyzer {
       }
 
       return plans;
+   }
+
+   /**
+    * The entries this village has not yet filled its quota of.
+    *
+    * <p>A village with no saved data yet has built nothing, so everything is available.
+    */
+   private List<StructureEntry> withinVillageLimits(List<StructureEntry> entries) {
+      VillageData data = Main.VILLAGE_DATA_MANAGER.getExistingVillageData(this.world, this.villageCenter);
+      if (data == null) {
+         return entries;
+      }
+
+      List<StructureEntry> allowed = new ArrayList<>(entries.size());
+      for (StructureEntry entry : entries) {
+         if (data.canBuild(entry)) {
+            allowed.add(entry);
+         }
+      }
+      return allowed;
    }
 
    public StructurePlan getRecommendedPlan() {
@@ -183,6 +207,11 @@ public class VillageNeedsAnalyzer {
       if (entries.isEmpty()) {
          entries = registry.query(need);
       }
+
+      // Same filter as the plan list. A structure the village has already filled its quota of is
+      // not something it is short of builders for, and counting it here would divert the village
+      // into recruiting for a building it can never start.
+      entries = this.withinVillageLimits(entries);
 
       if (entries.isEmpty()) {
          return false;

@@ -1,8 +1,10 @@
 package justfatlard.village_builder.village;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import justfatlard.village_builder.Main;
 import justfatlard.village_builder.building.StructureEntry;
@@ -25,7 +27,7 @@ import org.slf4j.LoggerFactory;
 
 public class VillageData {
    private static final Logger LOGGER = LoggerFactory.getLogger("village-builder");
-   private static final int CURRENT_NBT_VERSION = 3; // v3: added preferredBuildSite (optional, null-default on v1-v2 load)
+   private static final int CURRENT_NBT_VERSION = 4; // v4: added limitGroupCounts (empty-default on v1-v3 load)
    private BlockPos villageCenter;
    private StructurePlan currentPlan = null;
    private final NonNullList<ItemStack> inventory = NonNullList.withSize(27, ItemStack.EMPTY);
@@ -36,6 +38,15 @@ public class VillageData {
    static final int MAX_PLACEMENT_FAILURES = 3;
    static final int MAX_BUILT_STRUCTURES = 40;
    private final List<BuiltStructure> builtStructures = new ArrayList<>();
+   /**
+    * How many structures of each limit group this village has completed, ever.
+    *
+    * <p>Separate from {@link #builtStructures} on purpose: that list is a spatial record capped at
+    * {@link #MAX_BUILT_STRUCTURES} which drops its oldest entry once full, so counting limit groups
+    * from it would quietly let a village rebuild a one-per-village structure after forty others.
+    * This tally is small, keyed by group, and never evicts.
+    */
+   private final Map<String, Integer> limitGroupCounts = new HashMap<>();
    private transient VillageNeedsAnalyzer cachedAnalyzer;
    private BlockPos preferredBuildSite = null;
    private UUID planPatronUuid;
@@ -89,6 +100,39 @@ public class VillageData {
          this.builtStructures.remove(0);
       }
       this.markDirty();
+   }
+
+   /** Count one completed structure against its limit group. */
+   public void recordLimitGroup(String limitGroup) {
+      if (limitGroup == null || limitGroup.isBlank()) {
+         return;
+      }
+      this.limitGroupCounts.merge(limitGroup, 1, Integer::sum);
+      this.markDirty();
+   }
+
+   /**
+    * Record structures of a limit group that the village already had before Village Builder saw
+    * it. Only applies when the group has no tally yet, so re-seeding an established village
+    * cannot inflate its count.
+    */
+   public void seedLimitGroup(String limitGroup, int count) {
+      if (limitGroup == null || limitGroup.isBlank() || count <= 0) {
+         return;
+      }
+      if (this.limitGroupCounts.putIfAbsent(limitGroup, count) == null) {
+         this.markDirty();
+      }
+   }
+
+   /** How many of this limit group the village has completed. */
+   public int getLimitGroupCount(String limitGroup) {
+      return limitGroup == null ? 0 : this.limitGroupCounts.getOrDefault(limitGroup, 0);
+   }
+
+   /** Whether the village may still build this entry, given its per-village limit. */
+   public boolean canBuild(StructureEntry entry) {
+      return entry == null || entry.allowsAnotherInVillage(this.getLimitGroupCount(entry.limitGroup()));
    }
 
    public int getPlacementFailures() {
@@ -421,6 +465,14 @@ public class VillageData {
          });
       }
 
+      if (nbt.contains("LimitGroupCounts")) {
+         nbt.getCompound("LimitGroupCounts").ifPresent(counts -> {
+            for (String group : counts.keySet()) {
+               data.limitGroupCounts.put(group, counts.getIntOr(group, 0));
+            }
+         });
+      }
+
       return data;
    }
 
@@ -475,6 +527,10 @@ public class VillageData {
          builtList.add(entry);
       }
       nbt.put("BuiltStructures", builtList);
+
+      CompoundTag limitCounts = new CompoundTag();
+      this.limitGroupCounts.forEach(limitCounts::putInt);
+      nbt.put("LimitGroupCounts", limitCounts);
 
       return nbt;
    }

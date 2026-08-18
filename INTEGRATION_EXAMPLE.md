@@ -79,6 +79,59 @@ VillageBuilderAPI.registerStructurePersistent(
 );
 ```
 
+#### Limiting how many a village builds
+
+By default a village may build a registered structure as often as its needs call for it. Village
+Builder never treats a need as *satisfied* by a particular building (DEFENSE, for instance, is
+measured in iron golems per villager), so a village that keeps wanting defence keeps accepting
+whatever defensive structures are on offer.
+
+Pass a **limit group** and a per-village maximum to cap that. Entries sharing a group count against
+one another, so a mod offering the same building in several sizes can cap the whole family at one
+per village rather than one of each:
+
+```java
+for (String size : List.of("small", "medium", "large")) {
+    VillageBuilderAPI.registerStructurePersistent(
+        Identifier.of("mymod", "castle_" + size),
+        "Castle (" + size + ")",
+        Set.of(VillageNeed.DEFENSE),
+        requirementsFor(size),
+        Set.of("plains"),
+        clearanceFor(size),
+        "mymod:castle",  // limit group: all three sizes count as one thing
+        1                // at most one per village
+    );
+}
+```
+
+The count is per village, keyed by group, and persists with the village's saved data. It is not
+decremented when a structure is destroyed, so a village that loses its keep does not immediately
+start another. A `maxPerVillage` of zero or less means unlimited, which is what the overloads
+without these two arguments give you.
+
+#### Counting what was already there
+
+The tally above counts what Village Builder itself completed. A structure that was already standing
+when the village was first surveyed, placed by worldgen or by hand, is invisible to it, so a village
+could hold one of yours and still be offered another.
+
+Register a **seeder** to close that. It is asked once, when the village's data is created and before
+its first plan is chosen, and its answer is folded into the tally:
+
+```java
+VillageBuilderAPI.registerLimitGroupSeeder("mymod:castle", (world, villageCenter) -> {
+    // However your mod recognises its own work. Walking the village's structure pieces is
+    // usually exact; a block scan is a guess.
+    return countMyCastlesNear(world, villageCenter);
+});
+```
+
+It runs on the server thread during village discovery, so keep it cheap: a structure lookup or a
+short block scan, not a world sweep. A seeder that throws is logged and skipped rather than
+aborting discovery. Seeding only applies when the group has no tally yet, so it cannot inflate an
+established village's count.
+
 Alternatively, use `registerStructure` for one-time registration (e.g., after world load events), but the registration will be lost on the next world reload unless you re-register.
 
 ### NBT Template Registration
