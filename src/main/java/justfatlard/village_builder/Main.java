@@ -87,6 +87,7 @@ public class Main implements ModInitializer {
       // registries leaves them guessing at it.
       PandoricalApi.content().registerBlock(MOD_ID + ":builders_table", new BlockRegistration()
          .baseBlock("minecraft:oak_planks")
+         .interactive()
          .model(MOD_ID + ":block/builders_table"));
       PandoricalApi.content().registerItem(MOD_ID + ":builders_table", new ItemRegistration()
          .model(MOD_ID + ":block/builders_table"));
@@ -120,7 +121,7 @@ public class Main implements ModInitializer {
       BuilderTrades.register();
 
       // Register Pandorical screen handlers for the Builder's Table
-      BuildersTableBlockEntity.registerPandoricalHandlers(BlockPos.ZERO);
+      BuildersTableBlockEntity.registerPandoricalHandlers();
 
       ServerLevelEvents.LOAD.register((server, world) -> {
          if (world.dimension() == Level.OVERWORLD) {

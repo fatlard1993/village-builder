@@ -5,7 +5,7 @@ import java.util.List;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 
-public record BuildersTableData(String planName, String needReason, List<BuildersTableData.MaterialInfo> materials, int builderCount, String constructionHint) {
+public record BuildersTableData(String planName, String needReason, List<BuildersTableData.MaterialInfo> materials, int builderCount) {
    public static final StreamCodec<RegistryFriendlyByteBuf, BuildersTableData> CODEC = new StreamCodec<>() {
       @Override
       public BuildersTableData decode(RegistryFriendlyByteBuf buf) {
@@ -17,8 +17,7 @@ public record BuildersTableData(String planName, String needReason, List<Builder
             materials.add(MaterialInfo.CODEC.decode(buf));
          }
          int builderCount = buf.readVarInt();
-         String constructionHint = buf.readUtf();
-         return new BuildersTableData(planName, needReason, materials, builderCount, constructionHint);
+         return new BuildersTableData(planName, needReason, materials, builderCount);
       }
 
       @Override
@@ -30,11 +29,10 @@ public record BuildersTableData(String planName, String needReason, List<Builder
             MaterialInfo.CODEC.encode(buf, mat);
          }
          buf.writeVarInt(data.builderCount);
-         buf.writeUtf(data.constructionHint);
       }
    };
 
-   public static final BuildersTableData EMPTY = new BuildersTableData("", "", List.of(), 0, "");
+   public static final BuildersTableData EMPTY = new BuildersTableData("", "", List.of(), 0);
 
    public record MaterialInfo(String itemId, int have, int need) {
       public static final StreamCodec<RegistryFriendlyByteBuf, BuildersTableData.MaterialInfo> CODEC = new StreamCodec<>() {
