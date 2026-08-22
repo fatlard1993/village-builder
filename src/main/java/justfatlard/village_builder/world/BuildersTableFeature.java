@@ -202,6 +202,16 @@ public class BuildersTableFeature {
       return null;
    }
 
+   /**
+    * How far down must be solid before a spot counts as ground.
+    *
+    * <p>A roof passes every other test: it is air with air above it and something solid
+    * underneath, and it sits within {@link #MAX_HEIGHT_FROM_BELL} of a bell, because the bell
+    * stands on its own raised platform and a village house is not tall. What a roof has that
+    * ground does not is a room under it.
+    */
+   private static final int SOLID_DEPTH = 4;
+
    private static boolean isLocationSuitable(ServerLevel world, BlockPos pos) {
       if (!world.getBlockState(pos).isAir()) {
          return false;
@@ -210,6 +220,33 @@ public class BuildersTableFeature {
          return false;
       }
       BlockState groundState = world.getBlockState(pos.below());
-      return groundState.isSolid();
+      if (!groundState.isSolid()) {
+         return false;
+      }
+
+      return standsOnGround(world, pos);
+   }
+
+   /**
+    * Whether this is ground rather than something built on it.
+    *
+    * <p>Two questions. Is it solid a good way down - a roof, a wall top, an awning and a tree
+    * canopy all have a gap not far below, and ground does not. And is its neighbourhood solid
+    * too - that rules out perching on a roof ridge, a fence post or a wall, which are one block
+    * wide and would otherwise pass the first test on the way down through the wall.
+    */
+   private static boolean standsOnGround(ServerLevel world, BlockPos pos) {
+      for (int depth = 1; depth <= SOLID_DEPTH; depth++) {
+         if (!world.getBlockState(pos.below(depth)).isSolid()) {
+            return false;
+         }
+      }
+
+      for (net.minecraft.core.Direction side : net.minecraft.core.Direction.Plane.HORIZONTAL) {
+         if (!world.getBlockState(pos.relative(side).below()).isSolid()) {
+            return false;
+         }
+      }
+      return true;
    }
 }
