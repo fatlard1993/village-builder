@@ -71,43 +71,6 @@ def create_builder_villager_texture():
     return img
 
 
-def create_builders_table_item_texture():
-    """Create a 16x16 item texture for the Builder's Table."""
-    img = Image.new('RGBA', (16, 16), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(img)
-
-    # Table top (oak planks color with blueprint/plans on top)
-    plank_light = (188, 152, 98, 255)
-    plank_dark = (160, 128, 80, 255)
-    plank_edge = (120, 96, 64, 255)
-    blueprint = (80, 140, 200, 255)
-    blueprint_dark = (60, 110, 170, 255)
-    paper_white = (230, 225, 210, 255)
-
-    # Table body (sides)
-    draw.rectangle([1, 6, 14, 15], fill=plank_dark)
-    draw.rectangle([0, 6, 0, 15], fill=plank_edge)
-    draw.rectangle([15, 6, 15, 15], fill=plank_edge)
-    draw.rectangle([1, 15, 14, 15], fill=plank_edge)
-
-    # Legs
-    draw.rectangle([2, 13, 3, 15], fill=plank_edge)
-    draw.rectangle([12, 13, 13, 15], fill=plank_edge)
-
-    # Table top surface
-    draw.rectangle([0, 4, 15, 7], fill=plank_light)
-    draw.rectangle([0, 4, 15, 4], fill=(200, 165, 110, 255))  # Top highlight
-
-    # Blueprint paper on the table
-    draw.rectangle([3, 1, 12, 6], fill=blueprint)
-    draw.rectangle([4, 2, 11, 5], fill=blueprint_dark)
-    # Plan lines
-    draw.line([5, 3, 10, 3], fill=paper_white)
-    draw.line([5, 5, 8, 5], fill=paper_white)
-
-    return img
-
-
 def main():
     base = os.path.dirname(os.path.abspath(__file__))
     resources = os.path.join(base, 'src', 'main', 'resources', 'assets', 'village-builder')
@@ -123,7 +86,6 @@ def main():
     item_dir = os.path.join(resources, 'textures', 'item')
     os.makedirs(item_dir, exist_ok=True)
     item_path = os.path.join(item_dir, 'builders_table.png')
-    create_builders_table_item_texture().save(item_path)
     print(f"Saved item texture to {item_path}")
 
 
