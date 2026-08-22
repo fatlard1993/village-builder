@@ -3,12 +3,8 @@
     "icon": {
       "id": "village-builder:builders_table"
     },
-    "title": {
-      "translate": "advancement.village-builder.first_build.title"
-    },
-    "description": {
-      "translate": "advancement.village-builder.first_build.description"
-    },
+    "title": "It Takes a Village",
+    "description": "Witness a village construction",
     "show_toast": true,
     "announce_to_chat": true
   },

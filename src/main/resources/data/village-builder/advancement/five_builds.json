@@ -3,12 +3,8 @@
     "icon": {
       "id": "minecraft:oak_log"
     },
-    "title": {
-      "translate": "advancement.village-builder.five_builds.title"
-    },
-    "description": {
-      "translate": "advancement.village-builder.five_builds.description"
-    },
+    "title": "Growing Community",
+    "description": "Help a village build 5 structures",
     "show_toast": true,
     "announce_to_chat": true
   },

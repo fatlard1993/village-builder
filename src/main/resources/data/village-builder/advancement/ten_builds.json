@@ -3,12 +3,8 @@
     "icon": {
       "id": "minecraft:diamond"
     },
-    "title": {
-      "translate": "advancement.village-builder.ten_builds.title"
-    },
-    "description": {
-      "translate": "advancement.village-builder.ten_builds.description"
-    },
+    "title": "Master Patron",
+    "description": "Help a village build 10 structures",
     "show_toast": true,
     "announce_to_chat": true,
     "frame": "goal"

@@ -3,16 +3,12 @@
     "icon": {
       "id": "village-builder:builders_table"
     },
-    "title": {
-      "translate": "advancement.village-builder.place_table.title"
-    },
-    "description": {
-      "translate": "advancement.village-builder.place_table.description"
-    },
+    "title": "Breaking Ground",
+    "description": "Place a Builder's Table near a village",
     "show_toast": true,
     "announce_to_chat": false
   },
-  "parent": "village-builder:root",
+  "parent": "justfatlard:village/root",
   "criteria": {
     "placed_table": {
       "trigger": "minecraft:placed_block",
