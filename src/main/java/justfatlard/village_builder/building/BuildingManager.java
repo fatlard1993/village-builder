@@ -79,7 +79,7 @@ public class BuildingManager {
    }
 
    public boolean placeTemplate(ServerLevel world, BlockPos pos, Identifier templateId, BlockPos villageCenter) {
-      StructureTemplateManager templateManager = world.getStructureManager();
+      StructureTemplateManager templateManager = world.getStructureTemplateManager();
       Optional<StructureTemplate> template = templateManager.get(templateId);
       if (template.isEmpty()) {
          LOGGER.warn("Template not found: {}", templateId);

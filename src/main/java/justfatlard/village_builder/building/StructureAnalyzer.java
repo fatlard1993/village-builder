@@ -61,7 +61,7 @@ public class StructureAnalyzer {
    );
 
    public static StructureEntry analyze(ServerLevel world, Identifier templateId, String displayName, Set<String> biomePreferences) {
-      StructureTemplateManager manager = world.getStructureManager();
+      StructureTemplateManager manager = world.getStructureTemplateManager();
       Optional<StructureTemplate> templateOpt = manager.get(templateId);
       if (templateOpt.isEmpty()) {
          LOGGER.debug("Template not found: {}", templateId);
@@ -203,7 +203,7 @@ public class StructureAnalyzer {
 
    public static int discoverModStructures(ServerLevel world, StructureRegistry registry) {
       int count = 0;
-      StructureTemplateManager manager = world.getStructureManager();
+      StructureTemplateManager manager = world.getStructureTemplateManager();
       Map<String, List<String>> vanillagePools = getVanillaVillagePools();
 
       for (Entry<String, List<String>> biomePool : vanillagePools.entrySet()) {
