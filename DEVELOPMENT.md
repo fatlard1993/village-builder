@@ -325,3 +325,39 @@ All commands require operator (permission level 2 / GAMEMASTERS):
   - Quest selection is weighted by material shortage (most-needed item prioritized). Survey quests surface when all materials are gathered (reputation ≥25). Village-quests must be installed for any of this to activate; `village-builder` compileOnly-depends on its JAR (`../village-quests/build/libs/village-quests-1.0.0.jar`).
   - Village names from village-quests appear in build announcements. Loads conditionally when `village-quests-justfatlard` is present.
 - **village-mail**: Full integration via `VillageMailIntegration` + `BuilderMailRegistration`. Registers post office and public mailbox structures into the building pool. Sends mail notifications to nearby mailbox-owning players when construction completes (first build, then every 3rd), milestone reflections at 5/10/15/20 builds, and personal notes to plan patrons (25% chance). Plan assignments intentionally do NOT trigger mail; the village doesn't chase you down with a shopping list. Uses reflection into `MailApi`: no hard dependency. The donation API (`VillageBuilderAPI.processDonatedMaterials`) remains available for village-mail to route materials into village inventories.
+
+## Installation
+
+Install server-side alongside its declared dependencies (see `fabric.mod.json`); connecting clients need only Pandorical. Version targets live in `gradle.properties` (Minecraft, loader, Fabric API) and `fabric.mod.json` (Java).
+
+## Building from Source
+
+Village Builder builds against Pandorical's live source, not a published artifact: `settings.gradle` includes `../pandorical`. Check both out side by side or the build fails before it starts.
+
+```bash
+./gradlew build
+```
+
+The compiled JAR will be in `build/libs/`.
+
+## API
+
+Other mods can integrate with Village Builder via `VillageBuilderAPI`. See [INTEGRATION_EXAMPLE.md](INTEGRATION_EXAMPLE.md) for full details.
+
+```java
+import justfatlard.village_builder.api.VillageBuilderAPI;
+import justfatlard.village_builder.api.VillageBuilderAPI.DonationResult;
+
+// Process donated items: accepts building materials, rejects non-materials
+DonationResult result = VillageBuilderAPI.processDonatedMaterials(
+    world, donationPos, donatedItems
+);
+
+// Register a custom structure for villages to build
+VillageBuilderAPI.registerStructurePersistent(
+    Identifier.of("mymod", "fortified_house"), "Fortified House",
+    VillageNeedsAnalyzer.VillageNeed.HOUSING,
+    List.of(new StructureType.MaterialRequirement(Items.COBBLESTONE, 200)),
+    Set.of("plains", "taiga"), 7
+);
+```

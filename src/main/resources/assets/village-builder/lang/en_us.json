@@ -24,7 +24,6 @@
   "message.village-builder.reputation_hostile": "§c-%1$s reputation! Villagers may become hostile! (Rep: %2$s)",
   "message.village-builder.reputation_low": "§e-%1$s reputation. Warning: Low reputation! (Rep: %2$s)",
   "message.village-builder.reputation_deducted": "§e-%1$s reputation (Rep: %2$s)",
-  "message.village-builder.builders_gathered": "§7Builders gathered %1$s %2$s at dawn. %3$s%% complete",
   "message.village-builder.build_failed": "§cConstruction failed! Materials have been restored.",
   "message.village-builder.inventory_full": "§cVillage inventory is full! Overflow dropped nearby.",
   "message.village-builder.donation_accepted": "§e%s building materials added to village stockpile",

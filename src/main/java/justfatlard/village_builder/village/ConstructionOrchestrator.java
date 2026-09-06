@@ -148,9 +148,10 @@ class ConstructionOrchestrator {
 
       if (gathered > 0) {
          manager.markPersistentDirty();
-         manager.notifyGathering(world, center,
-            Component.translatable("message.village-builder.builders_gathered",
-               gathered, Component.translatable(targetItemKey).getString(), String.format("%.0f", completion)));
+         // The gathering itself is not announced. It happens every dawn, in every village, whether
+         // or not anyone asked for it or is anywhere near - a running total nobody is acting on,
+         // arriving on its own schedule. What the builders have is visible by asking them; the
+         // messages worth sending are the ones that answer something a player just did.
          if (overflow > 0) {
             manager.notifyGathering(world, center,
                Component.translatable("message.village-builder.inventory_full"));
@@ -230,9 +231,18 @@ class ConstructionOrchestrator {
          return;
       }
 
-      boolean built = resolvedType != null
-         ? Main.BUILDING_MANAGER.buildStructure(world, buildPos, resolvedType, center)
-         : Main.BUILDING_MANAGER.placeTemplate(world, buildPos, plan.getStructureId(), center);
+      // Provider checked first so a procedural id can never be shadowed by a StructureType
+      // name collision.
+      boolean procedural = registryEntry != null && registryEntry.planProvider() != null;
+      boolean built;
+      if (procedural) {
+         built = Main.BUILDING_MANAGER.placeBuildPlan(world, buildPos, registryEntry.planProvider(),
+            VillageDataManager.getVillageBiome(world, center), clearanceSize, center);
+      } else {
+         built = resolvedType != null
+            ? Main.BUILDING_MANAGER.buildStructure(world, buildPos, resolvedType, center)
+            : Main.BUILDING_MANAGER.placeTemplate(world, buildPos, plan.getStructureId(), center);
+      }
 
       if (!built) {
          villageData.restoreInventory(snapshot);
@@ -240,8 +250,9 @@ class ConstructionOrchestrator {
          manager.notifyVillage(world, center, Component.translatable("message.village-builder.build_failed"));
          LOGGER.warn("Failed to build {} at {}: {} (materials restored, cooldown applied)",
             plan.getDisplayName(), buildPos,
-            resolvedType != null ? "hardcoded blueprint failed"
-               : "template '" + plan.getStructureId() + "' missing or corrupted");
+            procedural ? "procedural provider failed or returned no plan"
+               : resolvedType != null ? "hardcoded blueprint failed"
+                  : "template '" + plan.getStructureId() + "' missing or corrupted");
          return;
       }
 

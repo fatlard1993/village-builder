@@ -243,6 +243,47 @@ public class Main implements ModInitializer {
                         return 1;
                      }
                   }))
+                  .then(Commands.literal("testplan").executes(context -> {
+                     // Proves the procedural path end-to-end without any other mod installed:
+                     // ground-snap, terrain prep, insertion-order placement, chest loot, path
+                     // connection - through the exact code a registered provider would use.
+                     CommandSourceStack source = context.getSource();
+                     ServerLevel world = source.getLevel();
+                     BlockPos playerPos = BlockPos.containing(source.getPosition());
+                     justfatlard.village_builder.api.BuildPlanProvider provider =
+                        (w, origin, random, biomeKey, facing) -> {
+                           java.util.LinkedHashMap<BlockPos, net.minecraft.world.level.block.state.BlockState> blocks =
+                              new java.util.LinkedHashMap<>();
+                           for (int x = 0; x < 7; x++) {
+                              for (int z = 0; z < 7; z++) {
+                                 boolean shell = x == 0 || x == 6 || z == 0 || z == 6;
+                                 blocks.put(new BlockPos(x, 0, z),
+                                    net.minecraft.world.level.block.Blocks.OAK_PLANKS.defaultBlockState());
+                                 for (int y = 1; y <= 3; y++) {
+                                    blocks.put(new BlockPos(x, y, z), shell
+                                       ? net.minecraft.world.level.block.Blocks.COBBLESTONE.defaultBlockState()
+                                       : net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                                 }
+                              }
+                           }
+                           // Doorway punched after the wall, proving last-write-wins order.
+                           blocks.put(new BlockPos(3, 1, 0),
+                              net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                           blocks.put(new BlockPos(3, 2, 0),
+                              net.minecraft.world.level.block.Blocks.AIR.defaultBlockState());
+                           return new justfatlard.village_builder.api.BuildPlan(
+                              new net.minecraft.core.Vec3i(7, 4, 7), blocks,
+                              java.util.List.of(new justfatlard.village_builder.api.BuildPlan.Chest(
+                                 new BlockPos(3, 1, 5), net.minecraft.core.Direction.NORTH,
+                                 Identifier.parse("minecraft:chests/village/village_plains_house"))));
+                        };
+                     boolean ok = BUILDING_MANAGER.placeBuildPlan(
+                        world, playerPos, provider,
+                        justfatlard.village_builder.api.VillageBuilderAPI.BIOME_PLAINS, 7, playerPos);
+                     source.sendSuccess(() -> Component.literal(
+                        ok ? "Test plan placed." : "Test plan placement failed - see log."), false);
+                     return ok ? 1 : 0;
+                  }))
             )
          );
       LOGGER.info("Loaded Village Builder mod");

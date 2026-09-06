@@ -276,6 +276,38 @@ public class VillageBuilderAPI {
       }
    }
 
+   /**
+    * Register a procedurally generated structure: instead of an NBT template, the given provider
+    * computes a {@link BuildPlan} at build time (handed the site, a facing, and the village's
+    * biome key), and Village Builder places its blocks. Composes with limit groups and survives
+    * world reloads exactly like {@link #registerStructurePersistent}.
+    */
+   public static void registerProceduralPersistent(
+      Identifier id,
+      String displayName,
+      Set<VillageNeedsAnalyzer.VillageNeed> needs,
+      List<StructureType.MaterialRequirement> requirements,
+      Set<String> biomePreferences,
+      int clearanceSize,
+      String limitGroup,
+      int maxPerVillage,
+      BuildPlanProvider provider
+   ) {
+      Runnable registration = () -> {
+         StructureEntry entry = new StructureEntry(
+            id, displayName, needs, requirements, biomePreferences, clearanceSize,
+            StructureEntry.Source.MOD_REGISTERED, limitGroup, maxPerVillage, provider
+         );
+         Main.STRUCTURE_REGISTRY.register(entry);
+         LOGGER.info("Registered procedural structure: {} ({}), limit {} per village in group '{}'",
+            id, needs, maxPerVillage, entry.limitGroup());
+      };
+      Main.STRUCTURE_REGISTRY.addReloadCallback(registration);
+      if (Main.STRUCTURE_REGISTRY.isInitialized()) {
+         registration.run();
+      }
+   }
+
    public static void registerTemplatePersistent(
       Identifier templateId,
       String displayName,

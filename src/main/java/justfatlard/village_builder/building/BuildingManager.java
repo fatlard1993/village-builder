@@ -5,7 +5,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Map.Entry;
+import justfatlard.village_builder.integration.VillageQuestsChests;
 import justfatlard.village_builder.Main;
+import justfatlard.village_builder.api.BuildPlan;
+import justfatlard.village_builder.api.BuildPlanProvider;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Vec3i;
@@ -132,6 +135,72 @@ public class BuildingManager {
 
    private boolean placeFromTemplate(ServerLevel world, BlockPos pos, StructureType type, BlockPos villageCenter) {
       return this.placeTemplate(world, pos, Identifier.fromNamespaceAndPath("village-builder", type.getId()), villageCenter);
+   }
+
+   /**
+    * Places a procedurally generated structure: the provider computes the blocks at build time,
+    * this method owns the ground, the terrain prep, and the world writes - the same contract the
+    * template path has, with the provider standing in for the NBT file.
+    *
+    * <p>The provider is handed a facing and rotates its own plan; block states are written
+    * verbatim. The plan's positions are origin-relative per the {@link BuildPlan} contract.
+    * Ground is estimated from the declared clearance before the provider runs - the same
+    * declared-vs-actual size tolerance the template path already lives with.
+    */
+   public boolean placeBuildPlan(ServerLevel world, BlockPos pos, BuildPlanProvider provider,
+                                 String biomeKey, int clearanceSize, BlockPos villageCenter) {
+      int groundY = this.getGroundY(world, pos, clearanceSize, clearanceSize);
+      BlockPos groundPos = new BlockPos(pos.getX(), groundY, pos.getZ());
+      Direction facing = Direction.Plane.HORIZONTAL.getRandomDirection(world.getRandom());
+
+      try {
+         BuildPlan plan = provider.generate(world, groundPos, world.getRandom(), biomeKey, facing);
+         if (plan == null || plan.blocks().isEmpty()) {
+            LOGGER.warn("Procedural provider returned no plan at {} (biome {}, facing {})",
+               groundPos, biomeKey, facing);
+            return false;
+         }
+
+         Vec3i size = plan.size();
+         if (!this.isBuildAreaLoaded(world, groundPos, size.getX(), size.getZ())) {
+            LOGGER.warn("Build area at {} not fully loaded for procedural plan, aborting", groundPos);
+            return false;
+         }
+         if (!this.prepareTerrainForBuilding(world, groundPos, size.getX(), size.getZ())) {
+            LOGGER.warn("Terrain prep failed for procedural plan at {}, aborting placement", groundPos);
+            return false;
+         }
+
+         for (Entry<BlockPos, BlockState> entry : plan.blocks().entrySet()) {
+            world.setBlock(groundPos.offset(entry.getKey()), entry.getValue(), 2);
+         }
+
+         for (BuildPlan.Chest chest : plan.chests()) {
+            BlockPos chestPos = groundPos.offset(chest.pos());
+            // A chest with anything solid over it cannot be opened; clear the lid after every
+            // block the plan had to say so no drawing pass can bury one.
+            world.setBlock(chestPos.above(), Blocks.AIR.defaultBlockState(), 2);
+            world.setBlock(chestPos, Blocks.CHEST.defaultBlockState()
+               .setValue(net.minecraft.world.level.block.ChestBlock.FACING, chest.facing()), 2);
+            if (world.getBlockEntity(chestPos) instanceof RandomizableContainer lootable) {
+               lootable.setLootTable(
+                  ResourceKey.create(Registries.LOOT_TABLE, chest.lootTable()),
+                  world.getRandom().nextLong());
+               // And say so, because nothing else will. Village Quests learns which chests are the
+               // village's by scanning a chunk as it loads, and this one is going into a chunk that
+               // loaded before the building existed and will not load again while somebody is
+               // standing here watching it go up. Unannounced, a village castle's stores read as
+               // free loot until the area unloads and comes back.
+               VillageQuestsChests.claim(world, chestPos);
+            }
+         }
+
+         this.connectToNearestPath(world, groundPos, size.getX(), size.getZ(), villageCenter);
+         return true;
+      } catch (Exception e) {
+         LOGGER.error("Procedural placement failed at {}: {}", groundPos, e.getMessage());
+         return false;
+      }
    }
 
    private boolean buildFromBlueprint(ServerLevel world, BlockPos pos, StructureType type, BlockPos villageCenter) {

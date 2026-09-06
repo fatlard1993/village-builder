@@ -64,41 +64,9 @@ Villages celebrate the seasons with special structures that appear in the build 
 
 Village Builder uses Pandorical's `screens()` API to build and drive the Builder's Table UI (shared village inventory, current plan, progress, and material requirements) entirely server-side. Pandorical must be installed client-side to open the Builder's Table. A player without Pandorical who tries to open the table gets a chat message telling them Pandorical is required, instead of a broken or missing screen. The rest of the mod (the Builder villager profession, trades, autonomous material gathering, and construction) works independently of Pandorical.
 
-## Installation
+## Development
 
-Install server-side alongside its declared dependencies (see `fabric.mod.json`); connecting clients need only Pandorical. Version targets live in `gradle.properties` (Minecraft, loader, Fabric API) and `fabric.mod.json` (Java).
-
-## Building from Source
-
-Village Builder builds against Pandorical's live source, not a published artifact: `settings.gradle` includes `../pandorical`. Check both out side by side or the build fails before it starts.
-
-```bash
-./gradlew build
-```
-
-The compiled JAR will be in `build/libs/`.
-
-## API
-
-Other mods can integrate with Village Builder via `VillageBuilderAPI`. See [INTEGRATION_EXAMPLE.md](INTEGRATION_EXAMPLE.md) for full details.
-
-```java
-import justfatlard.village_builder.api.VillageBuilderAPI;
-import justfatlard.village_builder.api.VillageBuilderAPI.DonationResult;
-
-// Process donated items: accepts building materials, rejects non-materials
-DonationResult result = VillageBuilderAPI.processDonatedMaterials(
-    world, donationPos, donatedItems
-);
-
-// Register a custom structure for villages to build
-VillageBuilderAPI.registerStructurePersistent(
-    Identifier.of("mymod", "fortified_house"), "Fortified House",
-    VillageNeedsAnalyzer.VillageNeed.HOUSING,
-    List.of(new StructureType.MaterialRequirement(Items.COBBLESTONE, 200)),
-    Set.of("plains", "taiga"), 7
-);
-```
+Installing, building and the API for other mods are in [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 

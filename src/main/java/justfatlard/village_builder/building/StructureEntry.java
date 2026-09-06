@@ -2,6 +2,7 @@ package justfatlard.village_builder.building;
 
 import java.util.List;
 import java.util.Set;
+import justfatlard.village_builder.api.BuildPlanProvider;
 import justfatlard.village_builder.village.VillageNeedsAnalyzer;
 import net.minecraft.resources.Identifier;
 
@@ -13,6 +14,9 @@ import net.minecraft.resources.Identifier;
  *                      group is only ever limited against itself.
  * @param maxPerVillage how many of this group a single village may build. Zero or less is
  *                      unlimited, which is the default and what every built-in structure uses.
+ * @param planProvider  when present, this entry is a procedural structure: blocks come from the
+ *                      provider at build time instead of an NBT template, and {@link #id} is a
+ *                      name rather than a template path. Null for template and blueprint entries.
  */
 public record StructureEntry(
    Identifier id,
@@ -23,10 +27,26 @@ public record StructureEntry(
    int clearanceSize,
    StructureEntry.Source source,
    String limitGroup,
-   int maxPerVillage
+   int maxPerVillage,
+   BuildPlanProvider planProvider
 ) {
    /** Value of {@link #maxPerVillage} meaning "as many as the village wants". */
    public static final int UNLIMITED = 0;
+
+   /** A template or blueprint entry (no provider). */
+   public StructureEntry(
+      Identifier id,
+      String displayName,
+      Set<VillageNeedsAnalyzer.VillageNeed> needs,
+      List<StructureType.MaterialRequirement> requirements,
+      Set<String> biomePreferences,
+      int clearanceSize,
+      StructureEntry.Source source,
+      String limitGroup,
+      int maxPerVillage
+   ) {
+      this(id, displayName, needs, requirements, biomePreferences, clearanceSize, source, limitGroup, maxPerVillage, null);
+   }
 
    /** An entry with no per-village limit. */
    public StructureEntry(
