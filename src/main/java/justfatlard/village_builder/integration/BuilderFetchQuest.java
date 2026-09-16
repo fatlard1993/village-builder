@@ -71,9 +71,8 @@ public class BuilderFetchQuest extends VillagerQuest {
          "Set it by the table. I'll make sure it gets used right.",
          "That's one less thing keeping us from breaking ground."
       };
-      player.sendSystemMessage(
-         Component.literal(requesterName + ": \"" + responses[ThreadLocalRandom.current().nextInt(responses.length)] + "\"")
-            .withStyle(ChatFormatting.GREEN), true);
+      justfatlard.village_quests.util.VillagerVoice.queue(player, this.getVillagerUuid(), requesterName,
+			responses[ThreadLocalRandom.current().nextInt(responses.length)]);
       this.completed = true;
    }
 }

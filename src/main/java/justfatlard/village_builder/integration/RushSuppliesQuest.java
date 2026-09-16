@@ -30,7 +30,7 @@ public class RushSuppliesQuest extends VillagerQuest {
    public String getDescription() {
       String itemName = requiredItem.getName(requiredItem.getDefaultInstance()).getString().toLowerCase();
       String[] asks = {
-         "Construction stops today without " + requiredAmount + " " + itemName + ". I need it now — not tomorrow.",
+         "Construction stops today without " + requiredAmount + " " + itemName + ". I need it now, not tomorrow.",
          "We're out of " + itemName + " and the crew is standing idle. " + requiredAmount + " pieces, quickly.",
          "I'm not in the habit of rushing people. But I need " + requiredAmount + " " + itemName + " before the light goes.",
       };
@@ -40,7 +40,7 @@ public class RushSuppliesQuest extends VillagerQuest {
    @Override
    public String getObjective() {
       String itemName = requiredItem.getName(requiredItem.getDefaultInstance()).getString().toLowerCase();
-      return "Quickly deliver " + requiredAmount + " " + itemName + " — time is running out";
+      return "Quickly deliver " + requiredAmount + " " + itemName + ", time is running out";
    }
 
    @Override
@@ -75,11 +75,10 @@ public class RushSuppliesQuest extends VillagerQuest {
       String[] responses = {
          "That's it. Thank you. The crew gets back to work now.",
          "I thought I'd have to push the schedule. You saved it.",
-         "Put it down — get paid. That's the kind of work I respect."
+         "Put it down, get paid. That's the kind of work I respect."
       };
-      player.sendSystemMessage(
-         Component.literal(requesterName + ": \"" + responses[ThreadLocalRandom.current().nextInt(responses.length)] + "\"")
-            .withStyle(ChatFormatting.GREEN), true);
+      justfatlard.village_quests.util.VillagerVoice.queue(player, this.getVillagerUuid(), requesterName,
+			responses[ThreadLocalRandom.current().nextInt(responses.length)]);
       this.completed = true;
    }
 

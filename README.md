@@ -11,10 +11,12 @@ The Builder villager gathers materials autonomously each dawn. You can speed thi
 ## Features
 
 ### Builder Villager Profession
-- New "Builder" villager profession with 5 levels of randomized trades
+- New "Builder" villager profession with 5 trade levels
 - Uses the Builder's Table as their workstation
-- Buys building materials: pays more for what the village needs, less for surplus
-- Sells structure plans that let you nudge the village's direction
+- Buys building materials, a new tier at each level (stone, logs, planks, glass/wool/terracotta/bricks, metals/tools/leather); materials sold to a Builder go into the village's stock
+- Pricing follows the current plan: materials it is short of fetch more, materials it has nearly enough of fetch less
+- Sells structure plans from level 2 that let you nudge the village's direction
+- Sells a Builder's Flag at level 5 (4 emeralds): right-click the ground within 64 blocks of a Builder's Table and the village's next building goes there, if the spot is clear
 - Gathers materials autonomously each dawn (rate scales with number of builders)
 
 ### Builder's Table
@@ -22,8 +24,8 @@ The Builder villager gathers materials autonomously each dawn. You can speed thi
 - Opens a shared village inventory where players can deposit building materials
 - Shows the current construction plan, progress percentage, and material requirements
 - Crafted from a Crafting Table + Smithing Table + Stonecutter + Furnace (2x2)
-- Can also be purchased from a Builder villager at level 1 for 4 emeralds
 - Spawns naturally in new villages and may appear in existing ones near bells
+- Moves next to each new building once it is built
 
 ### Dynamic Structure Discovery
 - Scans vanilla village NBT templates at server startup across 5 biomes (plains, taiga, desert, savanna, snowy)
@@ -48,13 +50,16 @@ The Builder villager gathers materials autonomously each dawn. You can speed thi
 Villages celebrate the seasons with special structures that appear in the build pool at certain times of year. Keep an eye on your villages during the holidays.
 
 ### Server Commands
+All require operator permission (level 2):
 - `/villagebuilder status`: view the nearest village's plan, progress, and materials
 - `/villagebuilder list`: count of all tracked villages
 - `/villagebuilder reassign`: force plan reassignment for the nearest village
+- `/villagebuilder testplan`: place a small test building at your position through the procedural build path (a debugging aid)
 
 ### Optional Mod Integration
 - **village-mail**: Registers post office and mailbox structures. Sends construction updates and milestone letters to players with mailboxes nearby.
-- **village-quests**: Taking village items costs reputation. Build announcements include village names. Three custom quest types: fetch materials, survey build site, rush supplies.
+- **village-quests**: Taking items out of the Builder's Table costs reputation. Build announcements include village names. Three custom quest types: fetch materials, survey build site, rush supplies.
+- **village-castles** and **poopsmith**: add their buildings to the list when installed (the Watch Keep, Walled Fort and Castle Seat, at most one per village; a latrine). With village-quests, a castle's chests count as the village's.
 
 ### Limitations
 - Overworld only. Builder's Tables placed in other dimensions will not function.
@@ -62,7 +67,7 @@ Villages celebrate the seasons with special structures that appear in the build 
 
 ## Pandorical
 
-Village Builder uses Pandorical's `screens()` API to build and drive the Builder's Table UI (shared village inventory, current plan, progress, and material requirements) entirely server-side. Pandorical must be installed client-side to open the Builder's Table. A player without Pandorical who tries to open the table gets a chat message telling them Pandorical is required, instead of a broken or missing screen. The rest of the mod (the Builder villager profession, trades, autonomous material gathering, and construction) works independently of Pandorical.
+Village Builder uses Pandorical's `screens()` API to build and drive the Builder's Table UI (shared village inventory, current plan, progress, and material requirements) entirely server-side. Pandorical is a required dependency on the server, and must be installed client-side to open the Builder's Table. A player without Pandorical who tries to open the table gets a chat message telling them Pandorical is required, instead of a broken or missing screen. The rest of the mod (the Builder villager profession, trades, autonomous material gathering, and construction) works for players without Pandorical on their client.
 
 ## Development
 

@@ -169,7 +169,14 @@ public class BuilderTrades {
         AABB area = new AABB(villageCenter).inflate(96);
         for (Villager villager : world.getEntitiesOfClass(Villager.class, area,
                 v -> v.getVillagerData().profession().is(Main.BUILDER_KEY))) {
+            // Rebuilt in place, not just emptied: the game refills a trade list only when the
+            // villager has none at all or levels up, so an emptied one stayed empty and a builder
+            // had nothing to sell after every building.
+            List<MerchantOffer> fresh = buildDynamicOffers(world, villager.blockPosition(),
+                villager.getVillagerData().level());
+            if (fresh.isEmpty()) continue;
             villager.getOffers().clear();
+            villager.getOffers().addAll(fresh);
         }
     }
 

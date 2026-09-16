@@ -25,7 +25,7 @@ public class SurveyBuildSiteQuest extends VillagerQuest {
       String loc = surveyTarget.toShortString();
       String[] descriptions = {
          requesterName + ": \"I've got my eye on a spot near " + loc + " for the next building. Can you check if the ground's solid and there's room?\"",
-         requesterName + ": \"There's a clearing around " + loc + " that might work. Walk it for me — tell me if it's right.\"",
+         requesterName + ": \"There's a clearing around " + loc + " that might work. Walk it for me, tell me if it's right.\"",
          requesterName + ": \"I need someone to look at " + loc + " before I commit to building there. Does it seem stable?\"",
       };
       return descriptions[ThreadLocalRandom.current().nextInt(descriptions.length)];
@@ -45,14 +45,13 @@ public class SurveyBuildSiteQuest extends VillagerQuest {
    public void onComplete(ServerPlayer player) {
       player.getInventory().add(new ItemStack(Main.BUILDERS_FLAG_ITEM, 1));
       String[] responses = {
-         "Good ground. Good sight lines. Use the flag I gave you to stake the spot — I'll build there next.",
+         "Good ground. Good sight lines. Use the flag I gave you to stake the spot. I'll build there next.",
          "Solid enough. Mark it with that flag if it's where you want the next build. I'll trust your eye.",
          "Sounds promising. Plant the flag and I'll know where to break ground.",
          "That works. If you want to claim the site, stake it. I'll see what goes up there."
       };
-      player.sendSystemMessage(
-         Component.literal(requesterName + ": \"" + responses[ThreadLocalRandom.current().nextInt(responses.length)] + "\"")
-            .withStyle(ChatFormatting.GREEN), true);
+      justfatlard.village_quests.util.VillagerVoice.queue(player, this.getVillagerUuid(), requesterName,
+			responses[ThreadLocalRandom.current().nextInt(responses.length)]);
       this.completed = true;
    }
 }
