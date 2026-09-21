@@ -17,7 +17,7 @@
   "message.village-builder.construction_ready": "§eConstruction ready! Will build at dawn...",
   "message.village-builder.no_build_location": "§cCould not find suitable building location!",
   "message.village-builder.plan_changed_no_space": "§eNo room for that structure. The Builder has chosen a different plan.",
-  "message.village-builder.building_constructed_patron": "§7A new %1$s has been built in %2$s — %3$s chose the plans.",
+  "message.village-builder.building_constructed_patron": "§7A new %1$s has been built in %2$s - %3$s chose the plans.",
   "message.village-builder.building_constructed_named": "§7A new %1$s has been built in %2$s.",
   "message.village-builder.building_constructed": "§7A new %s has been built.",
   "message.village-builder.reputation_error": "§cCouldn't access village reputation system!",

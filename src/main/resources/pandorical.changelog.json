@@ -1,0 +1,18 @@
+{
+  "overview": [
+    "Villages grow on their own. A Builder villager works out what the village is short of, gathers materials, and raises a real structure at dawn.",
+    "You can hurry it along as a patron, but you are not what causes it."
+  ],
+  "versions": {
+    "1.0.2": [
+      "A Builder caught by a zombie now wears a zombie Builder's own look, instead of the missing texture that used to stand in for it."
+    ],
+    "1.0.1": [
+      "A builder who has just watched a building go up has their trades back afterwards instead of an empty list, and finishing something a builder asked for is answered in the villager's own voice."
+    ],
+    "1.0.0": [
+      "The first release: the Builder profession and their table, structures discovered from the game's own village templates so a taiga village builds taiga, and a per-village limit so nothing worth having gets built four times.",
+      "A Builder's Flag says where the next building goes, and the table's panel shows what is still needed."
+    ]
+  }
+}
