@@ -4,6 +4,9 @@
     "You can hurry it along as a patron, but you are not what causes it."
   ],
   "versions": {
+    "1.0.5": [
+      "Drop changelog notes for changes nothing in the game shows."
+    ],
     "1.0.2": [
       "A Builder caught by a zombie wears a zombie Builder's own look, not a missing texture."
     ],
