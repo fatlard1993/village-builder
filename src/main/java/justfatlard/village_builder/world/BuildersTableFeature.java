@@ -71,13 +71,16 @@ public class BuildersTableFeature {
       }
       BlockPos searchCenter = new BlockPos(cx, world.getSeaLevel() + 40, cz);
       pendingSearches.incrementAndGet();
-      world.getServer().execute(() -> {
+      // After the chunk has loaded rather than inside its load: the search reads points of
+      // interest and puts a block down. Scheduled, since this runs on the server thread, where
+      // execute would run it right here and the cap on pending searches would count nothing.
+      world.getServer().schedule(new net.minecraft.server.TickTask(world.getServer().getTickCount(), () -> {
          try {
             spawnNearBell(world, searchCenter);
          } finally {
             pendingSearches.decrementAndGet();
          }
-      });
+      }));
    }
 
    private static void spawnNearBell(ServerLevel world, BlockPos searchCenter) {
