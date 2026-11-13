@@ -1,0 +1,39 @@
+{
+  "demo": {
+    "name": "Village Builder",
+    "icon": "village-builder:builders_table",
+    "about": [
+      "Villages grow on their own: a Builder villager works out what the village needs, gathers materials, and puts up a real building at dawn. You help by bringing materials.",
+      "Place the Builder's Table and open it before anyone takes the job: with no Builder yet, the village plans a Builder's Workshop. Then let the villagers out so one becomes the Builder, put the cobblestone, logs and coal in the table, and mark a spot with the Builder's Flag. It goes up at the next dawn, which can be up to 20 minutes off."
+    ]
+  },
+  "pvp_preset": 1,
+  "needs": ["village-builder"],
+  "preset": {
+    "name": "Village Builder",
+    "icon": "village-builder:builders_table",
+    "pvp": false,
+    "game_mode": "survival",
+    "entry_kit": [
+      {"slot": 0, "item": {"id": "village-builder:builders_table", "count": 1}},
+      {"slot": 1, "item": {"id": "minecraft:villager_spawn_egg", "count": 2}},
+      {"slot": 2, "item": {"id": "village-builder:builders_flag", "count": 1}},
+      {"slot": 3, "item": {"id": "minecraft:cobblestone", "count": 64}},
+      {"slot": 4, "item": {"id": "minecraft:cobblestone", "count": 64}},
+      {"slot": 5, "item": {"id": "minecraft:oak_log", "count": 64}},
+      {"slot": 6, "item": {"id": "minecraft:coal", "count": 8}},
+      {"slot": 7, "item": {"id": "minecraft:glass", "count": 16}},
+      {"slot": 8, "item": {"id": "minecraft:cooked_beef", "count": 8}},
+      {"slot": 9, "item": {"id": "minecraft:torch", "count": 16}}
+    ],
+    "respawn_kit": "entry",
+    "goal": "time",
+    "mobs": "off",
+    "life": 25,
+    "size": 8,
+    "world": "overworld",
+    "shape": "flat",
+    "biome": "minecraft:plains",
+    "weather": "clear"
+  }
+}

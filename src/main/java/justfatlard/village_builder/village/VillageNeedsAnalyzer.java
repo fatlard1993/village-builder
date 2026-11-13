@@ -153,7 +153,7 @@ public class VillageNeedsAnalyzer {
     * <p>A village with no saved data yet has built nothing, so everything is available.
     */
    private List<StructureEntry> withinVillageLimits(List<StructureEntry> entries) {
-      VillageData data = Main.VILLAGE_DATA_MANAGER.getExistingVillageData(this.world, this.villageCenter);
+      VillageData data = Main.villages(this.world).getExistingVillageData(this.world, this.villageCenter);
       if (data == null) {
          return entries;
       }

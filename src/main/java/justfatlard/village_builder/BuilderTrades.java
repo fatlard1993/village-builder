@@ -194,7 +194,7 @@ public class BuilderTrades {
 
         BlockPos tablePos = BuildersTableFinder.findNearestBuildersTable(world, villagerPos);
         VillageData data = (tablePos != null)
-                ? Main.VILLAGE_DATA_MANAGER.getExistingVillageData(world, tablePos)
+                ? Main.villages(world).getExistingVillageData(world, tablePos)
                 : null;
         StructurePlan currentPlan = (data != null) ? data.getCurrentPlan() : null;
 

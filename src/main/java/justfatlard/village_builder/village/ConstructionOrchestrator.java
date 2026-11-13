@@ -14,6 +14,7 @@ import justfatlard.village_builder.building.StructurePlan;
 import justfatlard.village_builder.building.StructureType;
 import justfatlard.village_builder.integration.BuilderMailRegistration;
 import justfatlard.village_builder.integration.VillageQuestsIntegration;
+import justfatlard.village_builder.util.VillageDimensions;
 import net.minecraft.advancements.AdvancementHolder;
 import net.minecraft.advancements.AdvancementProgress;
 import net.minecraft.core.BlockPos;
@@ -257,7 +258,10 @@ class ConstructionOrchestrator {
       }
 
       // Construction successful
-      String villageName = VillageQuestsIntegration.getVillageName(center);
+      // An arena village is nobody's real village: it borrows no real village's name at the same
+      // coordinates, and sends no letters out of the arena (below).
+      boolean arena = VillageDimensions.isArena(world);
+      String villageName = arena ? null : VillageQuestsIntegration.getVillageName(center);
       String patronName = villageData.getPlanPatronName();
       Component announcement;
       if (patronName != null && villageName != null) {
@@ -286,10 +290,12 @@ class ConstructionOrchestrator {
       }
 
       int nextBuildCount = villageData.getBuiltStructures().size() + 1;
-      BuilderMailRegistration.notifyConstructionComplete(
-         world.getServer(), center, plan.getDisplayName(),
-         villageName, villageData.getPlanPatronUuid(), patronName, offTheme, nextBuildCount);
-      BuilderMailRegistration.checkMilestoneMail(world.getServer(), center, nextBuildCount);
+      if (!arena) {
+         BuilderMailRegistration.notifyConstructionComplete(
+            world.getServer(), center, plan.getDisplayName(),
+            villageName, villageData.getPlanPatronUuid(), patronName, offTheme, nextBuildCount);
+         BuilderMailRegistration.checkMilestoneMail(world.getServer(), center, nextBuildCount);
+      }
 
       world.players().forEach(player -> {
          if (player.blockPosition().closerThan(buildPos, 64.0)) {

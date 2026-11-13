@@ -320,7 +320,7 @@ All commands require operator (permission level 2 / GAMEMASTERS):
 - **Defense structures**: Defense classification (walls, towers) relies on block composition heuristics. Iron bars and cobblestone walls trigger it, but novel defense blocks from mods won't.
 - **Material caching**: Discovered material requirements are recomputed every server start from NBT templates. Caching to disk would speed startup for large modpacks.
 - **Chunk-loading dependency**: Villages only grow when their chunks are loaded. Autonomous gathering and construction require a player nearby. This is inherent to vanilla's chunk system.
-- **Overworld only**: Village Builder only operates in the Overworld dimension. Builder's Tables placed in other dimensions will not function.
+- **Overworld only**: Village Builder only operates in the Overworld dimension. Builder's Tables placed in other dimensions will not function. The one exception is PvP Dimensions' arena overworld (`pvp-dimensions-justfatlard:overworld`, recognised by id in `util/VillageDimensions`, no dependency): its villages are kept by a separate `VillageDataManager` (`Main.villages(world)`) in memory only, never saved, sending no village-mail and borrowing no village-quests name, and forgotten as their chunk unloads, since an arena's plot is deleted after it ends. The mod's demo for that arena is `src/main/resources/pvp-dimensions/demo.json`.
 
 ## Optional Mod Integration
 

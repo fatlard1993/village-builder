@@ -74,7 +74,7 @@ public class VillagerEntityMixin {
                int firstBuyCount = offer.getItemCostA().count();
                Item sellItem = offer.getResult().getItem();
                if (sellItem == Items.EMERALD && firstBuyItem != Items.EMERALD) {
-                  Main.VILLAGE_DATA_MANAGER.addMaterialToVillage(serverWorld, tablePos, firstBuyItem, firstBuyCount);
+                  Main.villages(serverWorld).addMaterialToVillage(serverWorld, tablePos, firstBuyItem, firstBuyCount);
                   LOGGER.debug("Village received {}x {} from material trade", firstBuyCount, firstBuyItem);
                } else if (firstBuyItem == Items.EMERALD && sellItem == Items.PAPER) {
                   StructurePlan plan = getPlanFromPaper(offer.getResult());
@@ -98,7 +98,7 @@ public class VillagerEntityMixin {
                         patronName = buyer.getName().getString();
                      }
 
-                     Main.VILLAGE_DATA_MANAGER.setVillagePlan(serverWorld, tablePos, plan, patronUuid, patronName);
+                     Main.villages(serverWorld).setVillagePlan(serverWorld, tablePos, plan, patronUuid, patronName);
                      LOGGER.debug("Village plan set to: {}", plan.getDisplayName());
                   } else {
                      LOGGER.warn("Could not determine structure from plan paper; structure may have been unregistered");

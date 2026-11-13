@@ -15,6 +15,7 @@ import justfatlard.village_builder.building.StructureRegistry;
 import justfatlard.village_builder.building.StructureType;
 import justfatlard.village_builder.integration.BuilderMailRegistration;
 import justfatlard.village_builder.integration.BuilderQuestRegistration;
+import justfatlard.village_builder.util.VillageDimensions;
 import justfatlard.village_builder.village.VillageData;
 import justfatlard.village_builder.village.VillageDataManager;
 import net.fabricmc.api.ModInitializer;
@@ -79,7 +80,20 @@ public class Main implements ModInitializer {
    public static VillagerProfession BUILDER;
    public static final BuildingManager BUILDING_MANAGER = new BuildingManager();
    public static final VillageDataManager VILLAGE_DATA_MANAGER = new VillageDataManager();
+   /**
+    * Villages in PvP Dimensions' arena overworld, apart from the real ones: kept in memory only,
+    * since an arena's plot is deleted when the arena ends, and forgotten as their chunks unload.
+    */
+   private static final VillageDataManager ARENA_VILLAGES = new VillageDataManager();
    public static final StructureRegistry STRUCTURE_REGISTRY = new StructureRegistry();
+
+   /**
+    * The villages of this world. The arena overworld has its own, which never reach the save;
+    * everywhere else has the overworld's, as it always did.
+    */
+   public static VillageDataManager villages(Level world) {
+      return VillageDimensions.isArena(world) ? ARENA_VILLAGES : VILLAGE_DATA_MANAGER;
+   }
 
    public void onInitialize() {
       // Mirror the block and items into Pandorical's content registry: clients build
@@ -132,13 +146,23 @@ public class Main implements ModInitializer {
             STRUCTURE_REGISTRY.runReloadCallbacks();
             STRUCTURE_REGISTRY.markInitialized();
             VILLAGE_DATA_MANAGER.initialize(world);
+         } else if (VillageDimensions.isArena(world)) {
+            ARENA_VILLAGES.initializeTransient();
          }
       });
       ServerLevelEvents.UNLOAD.register((server, world) -> {
          if (world.dimension() == Level.OVERWORLD) {
             VILLAGE_DATA_MANAGER.reset();
             STRUCTURE_REGISTRY.clear();
+         } else if (VillageDimensions.isArena(world)) {
+            ARENA_VILLAGES.initializeTransient();
+            BuildersTableFeature.clearForWorld(world.dimension());
          }
+      });
+      // An arena holds its chunks loaded while it runs, so one unloading means the arena ended or
+      // everyone left it, and its plot may be deleted next: the villages on it go with it.
+      ServerChunkEvents.CHUNK_UNLOAD.register((world, chunk) -> {
+         if (VillageDimensions.isArena(world)) ARENA_VILLAGES.forgetVillagesIn(chunk.getPos().pack());
       });
 
       // Spawn a bare workbench block near the village bell when a new chunk loads.
@@ -147,8 +171,8 @@ public class Main implements ModInitializer {
           BuildersTableFeature.trySpawnInVillage(world, chunk.getPos().getWorldPosition()));
 
       ServerTickEvents.END_LEVEL_TICK.register(world -> {
-         if (world instanceof ServerLevel serverWorld && world.dimension() == Level.OVERWORLD) {
-            VILLAGE_DATA_MANAGER.tick(world);
+         if (world instanceof ServerLevel serverWorld && VillageDimensions.isVillageWorld(world)) {
+            villages(serverWorld).tick(serverWorld);
             BuildersTableFeature.tick(serverWorld);
          }
       });
@@ -183,7 +207,7 @@ public class Main implements ModInitializer {
                               CommandSourceStack source = context.getSource();
                               ServerLevel world = source.getLevel();
                               BlockPos playerPos = BlockPos.containing(source.getPosition());
-                              VillageData data = VILLAGE_DATA_MANAGER.getExistingVillageData(world, playerPos);
+                              VillageData data = villages(world).getExistingVillageData(world, playerPos);
                               if (data == null) {
                                  source.sendSuccess(() -> Component.literal("No village found near your position."), false);
                                  return 0;
@@ -223,7 +247,7 @@ public class Main implements ModInitializer {
                   )
                   .then(Commands.literal("list").executes(context -> {
                      CommandSourceStack source = context.getSource();
-                     int count = VILLAGE_DATA_MANAGER.getVillageCount();
+                     int count = villages(source.getLevel()).getVillageCount();
                      source.sendSuccess(() -> Component.literal("Tracked villages: " + count), false);
                      return count;
                   }))
@@ -231,14 +255,14 @@ public class Main implements ModInitializer {
                      CommandSourceStack source = context.getSource();
                      ServerLevel world = source.getLevel();
                      BlockPos playerPos = BlockPos.containing(source.getPosition());
-                     VillageData data = VILLAGE_DATA_MANAGER.getExistingVillageData(world, playerPos);
+                     VillageData data = villages(world).getExistingVillageData(world, playerPos);
                      if (data == null) {
                         source.sendSuccess(() -> Component.literal("No village found near your position."), false);
                         return 0;
                      } else {
                         data.clearCurrentPlan();
                         data.clearAnalyzer();
-                        VILLAGE_DATA_MANAGER.markPersistentDirty();
+                        villages(world).markPersistentDirty();
                         source.sendSuccess(() -> Component.literal("Plan cleared. A new plan will be assigned at next tick."), false);
                         return 1;
                      }

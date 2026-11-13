@@ -62,7 +62,7 @@ public class BuilderFetchQuest extends VillagerQuest {
    public void onComplete(ServerPlayer player) {
       InventoryHelper.removeItem(player.getInventory(), requiredItem, requiredAmount);
       if (player.level() instanceof ServerLevel world) {
-         Main.VILLAGE_DATA_MANAGER.addMaterialToVillage(world, tablePos, requiredItem, requiredAmount);
+         Main.villages(world).addMaterialToVillage(world, tablePos, requiredItem, requiredAmount);
       }
       String[] responses = {
          "Good. That's exactly what we needed.",

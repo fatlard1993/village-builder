@@ -2,13 +2,14 @@
 	"schemaVersion": 1,
 	"id": "village-builder-gametest",
 	"version": "1.0.0",
-	"name": "Village Builder smoke test",
-	"description": "Loads the mod, joins a world, and fails if anything on the way threw.",
+	"name": "Village Builder game tests",
+	"description": "Loads the mod and joins a world; on a full run, checks the table and flag work in a PvP Dimensions arena and not in the nether.",
 	"license": "MIT",
 	"environment": "*",
 	"entrypoints": {
 		"fabric-client-gametest": [
-			"justfatlard.village_builder.gametest.SmokeTest"
+			"justfatlard.village_builder.gametest.SmokeTest",
+			"justfatlard.village_builder.gametest.ArenaOverworld"
 		]
 	},
 	"depends": {

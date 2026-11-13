@@ -17,6 +17,7 @@ import justfatlard.village_builder.building.StructurePlan;
 import justfatlard.village_builder.building.StructureType;
 import justfatlard.village_builder.integration.VillageQuestsIntegration;
 import justfatlard.village_builder.screen.BuildersTableData;
+import justfatlard.village_builder.util.VillageDimensions;
 import justfatlard.village_builder.village.VillageData;
 import justfatlard.village_builder.village.VillageNeedsAnalyzer;
 import net.minecraft.core.BlockPos;
@@ -101,7 +102,7 @@ public class BuildersTableBlockEntity extends BlockEntity {
         }
 
         BuildersTableData data = buildScreenData(serverWorld);
-        VillageData villageData = Main.VILLAGE_DATA_MANAGER.getVillageDataForTable(serverWorld, this.worldPosition);
+        VillageData villageData = Main.villages(serverWorld).getVillageDataForTable(serverWorld, this.worldPosition);
 
         OpenScreenS2C screenDef = buildScreenDef(data);
 
@@ -127,7 +128,7 @@ public class BuildersTableBlockEntity extends BlockEntity {
     }
 
     private BuildersTableData buildScreenData(ServerLevel serverWorld) {
-        VillageData villageData = Main.VILLAGE_DATA_MANAGER.getVillageDataForTable(serverWorld, this.worldPosition);
+        VillageData villageData = Main.villages(serverWorld).getVillageDataForTable(serverWorld, this.worldPosition);
         if (villageData == null || villageData.getCurrentPlan() == null) {
             return BuildersTableData.EMPTY;
         }
@@ -330,7 +331,7 @@ public class BuildersTableBlockEntity extends BlockEntity {
             refresh(player, session);
 
             // Reputation for taking from the village's own stores, charged only on what left.
-            if (now < before && VillageQuestsIntegration.AVAILABLE) {
+            if (now < before && VillageQuestsIntegration.AVAILABLE && !VillageDimensions.isArena(player.level())) {
                 boolean success = VillageQuestsIntegration.modifyPlayerReputation(
                     player, session.table(), -1, "Took items from Builder's Table");
                 if (!success) {
@@ -343,7 +344,7 @@ public class BuildersTableBlockEntity extends BlockEntity {
         PandoricalApi.screens().onContainerRemoved(SCREEN_TYPE, player -> {
             SESSIONS.remove(player.getUUID());
             // Persist village data when the screen closes
-            Main.VILLAGE_DATA_MANAGER.markPersistentDirty();
+            if (player.level() instanceof ServerLevel level) Main.villages(level).markPersistentDirty();
         });
     }
 
@@ -366,7 +367,7 @@ public class BuildersTableBlockEntity extends BlockEntity {
     private static void refresh(ServerPlayer player, Session session) {
         if (!(player.level() instanceof ServerLevel level)) return;
 
-        VillageData villageData = Main.VILLAGE_DATA_MANAGER.getVillageDataForTable(level, session.table());
+        VillageData villageData = Main.villages(level).getVillageDataForTable(level, session.table());
         if (villageData == null || villageData.getCurrentPlan() == null) return;
 
         List<StructureType.MaterialRequirement> requirements = villageData.getCurrentPlan().getRequirements();

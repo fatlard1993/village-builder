@@ -85,15 +85,49 @@ public class VillageDataManager {
       LOGGER.info("Loaded {} villages from persistent state", this.villages.size());
    }
 
+   /**
+    * For a world whose villages are not kept: PvP Dimensions' arena overworld, whose plots are
+    * deleted when their arenas end. Everything is held in memory and nothing is written to the
+    * save, so no record of a village outlives the ground it stood on. Also what forgets them all
+    * again when that world unloads.
+    */
+   public void initializeTransient() {
+      this.clearState();
+      this.persistentState = new VillageDataState();
+      this.villages = this.persistentState.getVillages();
+   }
+
    public void reset() {
-      this.villages.clear();
+      this.clearState();
       this.persistentState = null;
+      BuilderMailRegistration.reset();
+      VillageBuilderAPI.clearListeners();
+   }
+
+   private void clearState() {
+      this.villages.clear();
       this.orchestrator.reset();
       this.tickCounter = 0;
       this.notifiedThisCycle.clear();
       this.wasDawn = false;
-      BuilderMailRegistration.reset();
-      VillageBuilderAPI.clearListeners();
+   }
+
+   /**
+    * Forgets every village whose table stands in this chunk, which is unloading. Only for a world
+    * whose villages are not kept: an arena's chunks stay loaded while it runs, so one unloading
+    * means the arena ended or everyone left it, and the plot may be deleted next.
+    */
+   public void forgetVillagesIn(long chunk) {
+      List<BlockPos> gone = new ArrayList<>();
+      for (BlockPos center : this.villages.keySet()) {
+         if (net.minecraft.world.level.ChunkPos.pack(center) == chunk) gone.add(center);
+      }
+      for (BlockPos center : gone) {
+         this.villages.remove(center);
+         this.orchestrator.removeCenter(center);
+         this.notifiedThisCycle.remove(center);
+      }
+      if (!gone.isEmpty()) LOGGER.debug("Forgot {} village(s) in an unloaded arena chunk", gone.size());
    }
 
    // --- Tick ---
@@ -107,7 +141,7 @@ public class VillageDataManager {
             int pruned = vd.pruneAbsentFootprints(world);
             if (pruned > 0) {
                LOGGER.debug("Pruned {} stale footprints from village at {}", pruned, vd.getVillageCenter());
-               this.persistentState.setDirty();
+               this.markPersistentDirty();
             }
          }
          this.orchestrator.expireStaleEntries(world.getServer().getTickCount());

@@ -70,7 +70,7 @@ public class RushSuppliesQuest extends VillagerQuest {
    public void onComplete(ServerPlayer player) {
       InventoryHelper.removeItem(player.getInventory(), requiredItem, requiredAmount);
       if (player.level() instanceof ServerLevel world) {
-         Main.VILLAGE_DATA_MANAGER.addMaterialToVillage(world, tablePos, requiredItem, requiredAmount);
+         Main.villages(world).addMaterialToVillage(world, tablePos, requiredItem, requiredAmount);
       }
       String[] responses = {
          "That's it. Thank you. The crew gets back to work now.",

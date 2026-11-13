@@ -125,7 +125,7 @@ public class VillageBuilderAPI {
       if (donatedItems == null || donatedItems.isEmpty()) {
          return new VillageBuilderAPI.DonationResult(accepted, rejected, 0);
       }
-      VillageData villageData = Main.VILLAGE_DATA_MANAGER.getVillageData(world, donationPos);
+      VillageData villageData = Main.villages(world).getVillageData(world, donationPos);
       if (villageData == null) {
          rejected.addAll(donatedItems);
          return new VillageBuilderAPI.DonationResult(accepted, rejected, 0);
@@ -173,7 +173,7 @@ public class VillageBuilderAPI {
    }
 
    public static boolean isNeededForConstruction(ServerLevel world, BlockPos villagePos, Item item) {
-      VillageData villageData = Main.VILLAGE_DATA_MANAGER.getExistingVillageData(world, villagePos);
+      VillageData villageData = Main.villages(world).getExistingVillageData(world, villagePos);
       if (villageData != null && villageData.getCurrentPlan() != null) {
          StructurePlan currentPlan = villageData.getCurrentPlan();
 
@@ -341,7 +341,7 @@ public class VillageBuilderAPI {
    }
 
    public static Component getConstructionStatus(ServerLevel world, BlockPos villagePos) {
-      VillageData villageData = Main.VILLAGE_DATA_MANAGER.getExistingVillageData(world, villagePos);
+      VillageData villageData = Main.villages(world).getExistingVillageData(world, villagePos);
       if (villageData != null && villageData.getCurrentPlan() != null) {
          StructurePlan plan = villageData.getCurrentPlan();
          return Component.translatable("message.village-builder.next_project", new Object[]{plan.getDisplayName()});

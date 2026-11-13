@@ -1,6 +1,7 @@
 package justfatlard.village_builder.block;
 
 import justfatlard.village_builder.Main;
+import justfatlard.village_builder.util.VillageDimensions;
 import justfatlard.village_builder.village.VillageData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -31,8 +32,8 @@ public class BuildersTableBlock extends Block implements EntityBlock {
    @Override
    protected void affectNeighborsAfterRemoval(BlockState state, ServerLevel world, BlockPos pos, boolean moved) {
       if (!moved) {
-         VillageData villageData = Main.VILLAGE_DATA_MANAGER.getExistingVillageData(world, pos);
-         if (villageData != null && !Main.VILLAGE_DATA_MANAGER.hasOtherTablesInVillage(world, pos)) {
+         VillageData villageData = Main.villages(world).getExistingVillageData(world, pos);
+         if (villageData != null && !Main.villages(world).hasOtherTablesInVillage(world, pos)) {
             for (ItemStack stack : villageData.getInventoryStacks()) {
                if (!stack.isEmpty()) {
                   world.addFreshEntity(new ItemEntity(world, pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5, stack.copy()));
@@ -47,7 +48,7 @@ public class BuildersTableBlock extends Block implements EntityBlock {
    @Override
    protected InteractionResult useWithoutItem(BlockState state, Level world, BlockPos pos, Player player, BlockHitResult hit) {
       if (!world.isClientSide() && player instanceof ServerPlayer serverPlayer) {
-         if (world.dimension() != Level.OVERWORLD) {
+         if (!VillageDimensions.isVillageWorld(world)) {
             serverPlayer.sendSystemMessage(Component.translatable("message.village-builder.wrong_dimension"));
             return InteractionResult.CONSUME;
          }

@@ -62,7 +62,7 @@ All require operator permission (level 2):
 - **village-castles** and **poopsmith**: add their buildings to the list when installed (the Watch Keep, Walled Fort and Castle Seat, at most one per village; a latrine). With village-quests, a castle's chests count as the village's.
 
 ### Limitations
-- Overworld only. Builder's Tables placed in other dimensions will not function.
+- Overworld only. Builder's Tables placed in other dimensions will not function, with one exception: a PvP Dimensions arena on overworld ground, where a village lasts only as long as the arena and nothing about it is saved.
 - Opening the Builder's Table requires Pandorical on the player's client; see [Pandorical](#pandorical) below.
 
 ## Pandorical

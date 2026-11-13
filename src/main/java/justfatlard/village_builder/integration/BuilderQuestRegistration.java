@@ -25,7 +25,7 @@ public class BuilderQuestRegistration {
          BlockPos tablePos = BuildersTableFinder.findNearestBuildersTable(world, villager.blockPosition());
          if (tablePos == null) return null;
 
-         VillageData data = Main.VILLAGE_DATA_MANAGER.getExistingVillageData(world, tablePos);
+         VillageData data = Main.villages(world).getExistingVillageData(world, tablePos);
          if (data == null) return null;
 
          StructurePlan plan = data.getCurrentPlan();
