@@ -4,6 +4,10 @@
     "You can hurry it along as a patron, but you are not what causes it."
   ],
   "versions": {
+    "1.0.6": [
+      "A village's builder's table is looked for after a chunk loads, not inside its load.",
+      "Works in a PvP Dimensions arena, and a demo to play there."
+    ],
     "1.0.5": [
       "Drop changelog notes for changes nothing in the game shows."
     ],
