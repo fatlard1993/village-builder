@@ -7,11 +7,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import justfatlard.village_builder.Main;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceKey;
+import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.TickTask;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.RandomSource;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.chunk.LevelChunk;
 import net.minecraft.world.entity.ai.village.poi.PoiManager;
 import net.minecraft.world.entity.ai.village.poi.PoiTypes;
@@ -40,6 +44,11 @@ public class BuildersTableFeature {
       evaluatedBells.remove(worldKey);
       queriedZones.remove(worldKey);
       pendingBells.remove(worldKey);
+   }
+
+   /** Searches still queued when the server stops never finish, so they must not hold the cap. */
+   public static void forgetPendingSearches() {
+      pendingSearches.set(0);
    }
 
    public static void trySpawnInVillage(ServerLevel world, BlockPos chunkPos) {
@@ -71,29 +80,52 @@ public class BuildersTableFeature {
       }
       BlockPos searchCenter = new BlockPos(cx, world.getSeaLevel() + 40, cz);
       pendingSearches.incrementAndGet();
-      // After the chunk has loaded rather than inside its load: the search reads points of
-      // interest and puts a block down. Scheduled, since this runs on the server thread, where
-      // execute would run it right here and the cap on pending searches would count nothing.
-      world.getServer().schedule(new net.minecraft.server.TickTask(world.getServer().getTickCount(), () -> {
+      whenPointsOfInterestRead(world, searchCenter, BELL_SEARCH_RADIUS, () -> {
+         boolean handedOn = false;
          try {
-            spawnNearBell(world, searchCenter);
+            handedOn = spawnNearBell(world, searchCenter);
          } finally {
-            pendingSearches.decrementAndGet();
+            if (!handedOn) pendingSearches.decrementAndGet();
          }
-      }));
+      });
    }
 
-   private static void spawnNearBell(ServerLevel world, BlockPos searchCenter) {
+   private static final int BELL_SEARCH_RADIUS = 48;
+   private static final int TABLE_SEARCH_RADIUS = 64;
+
+   /**
+    * Runs {@code then} on the server thread once the points of interest a search this wide would
+    * walk have been read from disk, so the search finds them in memory instead of waiting on the
+    * disk mid-tick for every chunk around it nobody has loaded.
+    *
+    * <p>Always on a later tick, never inside the call: this is reached from a chunk loading, and the
+    * search puts a block down. Scheduled rather than executed, since on the server thread execute
+    * would run it right here and the cap on pending searches would count nothing.
+    */
+   private static void whenPointsOfInterestRead(ServerLevel world, BlockPos center, int radius, Runnable then) {
       PoiManager poiStorage = world.getPoiManager();
-      Optional<BlockPos> bellPos = poiStorage.findClosest(poi -> poi.is(PoiTypes.MEETING), searchCenter, 48, Occupancy.ANY);
+      // The square of chunks PoiManager.getInSquare walks for this radius.
+      int chunkRadius = Math.floorDiv(radius, 16) + 1;
+      CompletableFuture<?>[] reads = ChunkPos.rangeClosed(ChunkPos.containing(center), chunkRadius)
+         .map(poiStorage::prefetch)
+         .toArray(CompletableFuture[]::new);
+      MinecraftServer server = world.getServer();
+      CompletableFuture.allOf(reads).whenComplete((done, failed) ->
+         server.schedule(new TickTask(server.getTickCount(), then)));
+   }
+
+   /** Whether this handed the search on to a later tick, which then owns the pending count. */
+   private static boolean spawnNearBell(ServerLevel world, BlockPos searchCenter) {
+      PoiManager poiStorage = world.getPoiManager();
+      Optional<BlockPos> bellPos = poiStorage.findClosest(poi -> poi.is(PoiTypes.MEETING), searchCenter, BELL_SEARCH_RADIUS, Occupancy.ANY);
       LOGGER.debug("[VB] spawnNearBell: bells found near {}: {}", searchCenter, bellPos.isPresent() ? 1 : 0);
       if (bellPos.isEmpty()) {
-         return;
+         return false;
       }
 
       Set<BlockPos> worldBells = evaluatedBells.computeIfAbsent(world.dimension(), k -> new LinkedHashSet<>());
       if (worldBells.contains(bellPos.get())) {
-         return;
+         return false;
       }
 
       while (worldBells.size() >= MAX_EVALUATED_BELLS) {
@@ -107,15 +139,28 @@ public class BuildersTableFeature {
       if (random.nextInt(10) > 8) {
          worldBells.add(bellPos.get());
          LOGGER.info("Bell at {}: skipped by chance roll (10%% miss)", bellPos.get());
-         return;
+         return false;
       }
 
-      Optional<BlockPos> existingTable = poiStorage.findClosest(
-         poi -> poi.is(Main.BUILDERS_TABLE_POI_KEY), bellPos.get(), 64, Occupancy.ANY
+      BlockPos bell = bellPos.get();
+      whenPointsOfInterestRead(world, bell, TABLE_SEARCH_RADIUS, () -> {
+         try {
+            queueIfTableless(world, bell);
+         } finally {
+            pendingSearches.decrementAndGet();
+         }
+      });
+      return true;
+   }
+
+   private static void queueIfTableless(ServerLevel world, BlockPos bell) {
+      Set<BlockPos> worldBells = evaluatedBells.computeIfAbsent(world.dimension(), k -> new LinkedHashSet<>());
+      Optional<BlockPos> existingTable = world.getPoiManager().findClosest(
+         poi -> poi.is(Main.BUILDERS_TABLE_POI_KEY), bell, TABLE_SEARCH_RADIUS, Occupancy.ANY
       );
       if (existingTable.isPresent()) {
-         worldBells.add(bellPos.get());
-         LOGGER.info("Bell at {} already has a table at {}", bellPos.get(), existingTable.get());
+         worldBells.add(bell);
+         LOGGER.info("Bell at {} already has a table at {}", bell, existingTable.get());
          return;
       }
 
@@ -125,7 +170,7 @@ public class BuildersTableFeature {
       // chunk getChunkNow cannot see and the whole attempt burns without placing
       // anything. Retrying over the following ticks lets the village load first.
       pendingBells.computeIfAbsent(world.dimension(), k -> new HashMap<>())
-         .putIfAbsent(bellPos.get(), PLACEMENT_ATTEMPTS);
+         .putIfAbsent(bell, PLACEMENT_ATTEMPTS);
    }
 
    /**
