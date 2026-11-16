@@ -151,12 +151,15 @@ public class Main implements ModInitializer {
          }
       });
       ServerLevelEvents.UNLOAD.register((server, world) -> {
+         // Every world, not just arenas: the next world opened in this game has the same
+         // dimension keys, and would otherwise skip its own villages as already searched.
+         BuildersTableFeature.clearForWorld(world.dimension());
          if (world.dimension() == Level.OVERWORLD) {
             VILLAGE_DATA_MANAGER.reset();
             STRUCTURE_REGISTRY.clear();
+            BuildersTableFeature.forgetPendingSearches();
          } else if (VillageDimensions.isArena(world)) {
             ARENA_VILLAGES.initializeTransient();
-            BuildersTableFeature.clearForWorld(world.dimension());
          }
       });
       // An arena holds its chunks loaded while it runs, so one unloading means the arena ended or
