@@ -111,7 +111,15 @@ public class BuildersTableFeature {
          .toArray(CompletableFuture[]::new);
       MinecraftServer server = world.getServer();
       CompletableFuture.allOf(reads).whenComplete((done, failed) ->
-         server.schedule(new TickTask(server.getTickCount(), then)));
+         server.schedule(new TickTask(server.getTickCount(), () -> {
+            // An arena can close while its reads are out; searching it then would fill the
+            // bookkeeping its unload just cleared, for a world that is gone.
+            if (server.getLevel(world.dimension()) == world) {
+               then.run();
+            } else {
+               pendingSearches.decrementAndGet();
+            }
+         })));
    }
 
    /** Whether this handed the search on to a later tick, which then owns the pending count. */
