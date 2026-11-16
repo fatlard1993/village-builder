@@ -4,6 +4,11 @@
     "You can hurry it along as a patron, but you are not what causes it."
   ],
   "versions": {
+    "1.0.7": [
+      "Looking for a village's bell reads the nearby chunks' records in the background first, instead of waiting on the disk in the middle of a tick.",
+      "A second world opened in the same game gets builder's tables at its villages, instead of skipping ground the first world already searched.",
+      "A builder's table search still waiting on the disk when its arena closes is dropped, instead of searching the closed world."
+    ],
     "1.0.6": [
       "A village's builder's table is looked for after a chunk loads, not inside its load.",
       "Works in a PvP Dimensions arena, and a demo to play there."
