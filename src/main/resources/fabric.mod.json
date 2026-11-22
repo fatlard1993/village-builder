@@ -3,7 +3,7 @@
   "id": "village-builder",
   "version": "${version}",
   "name": "Village Builder",
-  "description": "Villages grow on their own. A Builder villager analyzes what the village needs, gathers materials, and constructs new structures at dawn. Help as a patron — or just watch it happen.",
+  "description": "Villages that grow on their own, built by a Builder villager",
   "authors": [
     "justfatlard"
   ],
