@@ -4,6 +4,9 @@
     "You can hurry it along as a patron, but you are not what causes it."
   ],
   "versions": {
+    "1.0.8": [
+      "Describes itself in one short line of what it adds."
+    ],
     "1.0.7": [
       "Looking for a village's bell reads the nearby chunks' records in the background first, instead of waiting on the disk in the middle of a tick.",
       "A second world opened in the same game gets builder's tables at its villages, instead of skipping ground the first world already searched.",
